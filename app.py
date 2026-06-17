@@ -77,9 +77,6 @@ SECRET_PATH = os.environ.get("XPANEL_SECRET", "")
 app = Flask(__name__)
 app.secret_key = os.environ.get("XPANEL_SECRET_KEY", secrets.token_hex(32))
 
-if SECRET_PATH:
-    app.config["APPLICATION_ROOT"] = f"/{SECRET_PATH}"
-
 
 # ============================================================
 # Helpers

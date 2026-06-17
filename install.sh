@@ -211,14 +211,18 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
 
-    location / {
-        proxy_pass http://127.0.0.1:${FLASK_PORT};
+    location /${SECRET_PATH}/ {
+        proxy_pass http://127.0.0.1:${FLASK_PORT}/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_connect_timeout 10s;
         proxy_read_timeout 60s;
+    }
+
+    location / {
+        return 404;
     }
 }
 NGINXEOF
