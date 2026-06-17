@@ -125,7 +125,8 @@ interactive_config() {
     echo "  HTTPS порт:   ${SSL_PORT}"
     echo "  Внутренний:   ${FLASK_PORT}"
     echo "  Логин:        ${PANEL_USER}"
-    echo "  Пароль:       ${'*'${#INPUT_PASS}}"
+    PASS_MASK=$(printf '%*s' "${#INPUT_PASS}" '' | tr ' ' '*')
+    echo "  Пароль:       ${PASS_MASK}"
     echo "  Секретный путь: /${SECRET_PATH}"
     echo ""
     read -rp "Продолжить установку? [Y/n]: " CONFIRM
