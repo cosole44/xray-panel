@@ -450,14 +450,14 @@ var d=await api('/api/delete',{email:email,inbound_id:inbound_id,client_uuid:uui
 if(d.ok){toast('User '+email+' deleted',true);var el=document.getElementById('user-'+uuid);if(el)el.remove();updateStats(d.stats)}
 else toast(d.msg||'Error',false)}
 function addUserCard(u,inb){var g=document.getElementById('inbound-'+u.inbound_id);if(!g){location.reload();return}
-var esc=function(s){return s.replace(/'/g,"&#39;").replace(/"/g,"&quot;")};
+var e=function(s){return(s+'').replace(/'/g,"&#39;").replace(/\\/g,"&#92;")};
 var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
 h+='<div class="user-top"><div class="user-name">'+u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):'<span class="badge r">Off</span>')+'</div></div>';
 h+='<div class="user-meta"><span>&#128190; '+u.traffic+'</span><span>&#128197; '+u.expiry_str+'</span></div>';
 h+='<div class="user-actions">';
-h+='<button class="btn btn-p" style="flex:1" onclick="showLinks(\''+esc(u.email)+'\',\''+esc(u.vless_url)+'\',\''+esc(u.sub_url)+'\')">&#128279; Links</button>';
-h+='<button class="btn btn-s" style="flex:1" onclick="showExtend(\''+esc(u.email)+'\',\''+u.inbound_id+'\',\''+u.uuid+'\')">&#128197; Extend</button>';
-h+='<button class="btn btn-d" onclick="delUser(\''+esc(u.email)+'\',\''+u.inbound_id+'\',\''+u.uuid+'\')">&#128465;</button></div></div>';
+h+='<button class="btn btn-p" style="flex:1" onclick="showLinks(this.dataset.email,this.dataset.vless,this.dataset.sub)" data-email="'+e(u.email)+'" data-vless="'+e(u.vless_url)+'" data-sub="'+e(u.sub_url)+'">&#128279; Links</button>';
+h+='<button class="btn btn-s" style="flex:1" onclick="showExtend(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+e(u.email)+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">&#128197; Extend</button>';
+h+='<button class="btn btn-d" onclick="delUser(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+e(u.email)+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">&#128465;</button></div></div>';
 var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML('beforeend',h)}
 function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
 el.dataset.expiry=u.expiry;el.dataset.status=u.enable?(u.expired?'2':'1'):'3';
