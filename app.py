@@ -249,8 +249,10 @@ def _get_stats():
 # ============================================================
 # HTML Templates
 # ============================================================
-LOGIN_PAGE = '''<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Xray Panel</title>
+LOGIN_PAGE = '''<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000"><meta name="mobile-web-app-capable" content="yes">
+<title>Xray</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:#000;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -272,8 +274,11 @@ input:focus{background:#3a3a3c}
 <label>Пароль</label><input type="password" name="password" required>
 <button type="submit" class="btn">Войти</button></form></div></body></html>'''
 
-DASHBOARD_PAGE = '''<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Xray Panel</title>
+DASHBOARD_PAGE = '''<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000"><meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23000' width='100' height='100' rx='22'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='%230a84ff'>⚡</text></svg>">
+<title>Xray</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--border:rgba(84,84,88,0.65);--text:#fff;--muted:#8e8e93;--blue:#0a84ff;--green:#30d158;--red:#ff453a;--orange:#ff9f0a;--yellow:#ffd60a;--radius:13px}
@@ -350,11 +355,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .toast.er{background:var(--red);color:#fff}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 .btn-load{opacity:0.5;pointer-events:none}
+.hdr-exit{background:rgba(142,142,147,0.12);color:var(--muted);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500;text-decoration:none;transition:all .15s}
+.hdr-exit:active{background:rgba(142,142,147,0.25);transform:scale(0.95)}
 </style></head><body>
 <div class="header">
 <h1>Xray</h1>
 <div class="hdr-right">
-<a href="{{ basepath }}/logout" class="btn" style="font-size:13px;padding:6px 12px">Выйти</a>
+<a href="{{ basepath }}/logout" class="hdr-exit">Выйти</a>
 </div></div>
 <div class="container">
 <div class="stats">
