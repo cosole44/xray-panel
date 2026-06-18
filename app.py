@@ -253,195 +253,174 @@ LOGIN_PAGE = '''<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="vie
 <title>Xray Panel</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
-.box{background:rgba(30,41,59,0.95);backdrop-filter:blur(20px);border:1px solid rgba(148,163,184,0.15);border-radius:20px;padding:32px 28px;width:100%;max-width:380px;box-shadow:0 25px 50px rgba(0,0,0,0.5)}
-.logo{text-align:center;font-size:56px;margin-bottom:8px;filter:drop-shadow(0 0 20px rgba(59,130,246,0.4))}
-h1{text-align:center;font-size:22px;font-weight:700;margin-bottom:4px;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sub{text-align:center;color:#94a3b8;font-size:13px;margin-bottom:28px}
-label{display:block;margin-bottom:6px;font-size:12px;color:#94a3b8;font-weight:500}
-input{width:100%;padding:14px 16px;background:rgba(15,23,42,0.8);border:1.5px solid rgba(148,163,184,0.2);border-radius:12px;color:#e2e8f0;font-size:15px;outline:none;margin-bottom:14px;transition:border-color .2s}
-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
-.btn{width:100%;padding:14px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:4px}
-.btn:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(59,130,246,0.35)}
-.btn:active{transform:translateY(0)}
-.err{background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25);padding:12px;border-radius:10px;margin-bottom:16px;font-size:13px;text-align:center}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:#000;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.box{background:#1c1c1e;border-radius:16px;padding:40px 28px;width:100%;max-width:380px}
+h1{text-align:center;font-size:28px;font-weight:700;margin-bottom:4px}
+.sub{text-align:center;color:#8e8e93;font-size:13px;margin-bottom:32px}
+label{display:block;margin-bottom:6px;font-size:13px;color:#8e8e93;font-weight:500}
+input{width:100%;padding:14px 16px;background:#2c2c2e;border:none;border-radius:12px;color:#fff;font-size:16px;outline:none;margin-bottom:14px;transition:background .2s}
+input:focus{background:#3a3a3c}
+.btn{width:100%;padding:15px;background:#0a84ff;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px}
+.btn:active{transform:scale(0.98);opacity:0.8}
+.err{background:rgba(255,69,58,0.15);color:#ff453a;padding:12px;border-radius:10px;margin-bottom:16px;font-size:13px;text-align:center}
 </style></head><body>
 <div class="box">
-<div class="logo">&#9889;</div>
-<h1>Xray Panel</h1>
-<p class="sub">User Management</p>
+<h1>Xray</h1>
+<p class="sub">Управление пользователями</p>
 {% if error %}<div class="err">{{ error }}</div>{% endif %}
-<form method="POST"><label>Username</label><input type="text" name="username" required autofocus>
-<label>Password</label><input type="password" name="password" required>
-<button type="submit" class="btn">Sign In</button></form></div></body></html>'''
+<form method="POST"><label>Логин</label><input type="text" name="username" required autofocus>
+<label>Пароль</label><input type="password" name="password" required>
+<button type="submit" class="btn">Войти</button></form></div></body></html>'''
 
 DASHBOARD_PAGE = '''<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Xray Panel</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f172a;--card:#1e293b;--border:rgba(148,163,184,0.12);--text:#e2e8f0;--muted:#94a3b8;--accent:#3b82f6;--accent2:#8b5cf6;--green:#22c55e;--red:#ef4444;--orange:#f59e0b;--radius:16px}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
-.header{background:rgba(30,41,59,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.header h1{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
-.header h1 span{font-size:22px}
-.hdr-right{display:flex;gap:6px;align-items:center}
-.container{max-width:900px;margin:0 auto;padding:16px;padding-bottom:100px}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
-.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;position:relative;overflow:hidden}
-.stat::before{content:'';position:absolute;top:0;right:0;width:60px;height:60px;border-radius:50%;filter:blur(30px);opacity:0.15}
-.stat:nth-child(1)::before{background:var(--accent)}.stat:nth-child(2)::before{background:var(--green)}
-.stat:nth-child(3)::before{background:var(--red)}.stat:nth-child(4)::before{background:var(--accent2)}
-.stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.stat .value{font-size:24px;font-weight:800}
-.stat .value.g{color:var(--green)}.stat .value.b{color:var(--accent)}.stat .value.p{color:var(--accent2)}.stat .value.r{color:var(--red)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
-.card-h{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.card-h h2{font-size:14px;font-weight:600}
-.user-card{padding:14px 16px;border-bottom:1px solid var(--border);transition:background .15s}
-.user-card:last-child{border-bottom:none}
-.user-card:hover{background:rgba(59,130,246,0.03)}
-.user-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.user-name{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
-.user-meta{display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap}
-.user-meta span{display:flex;align-items:center;gap:4px}
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
-.badge.g{background:rgba(34,197,94,0.12);color:var(--green)}.badge.r{background:rgba(239,68,68,0.12);color:var(--red)}
-.badge.o{background:rgba(245,158,11,0.12);color:var(--orange)}.badge.i{background:rgba(148,163,184,0.15);color:#94a3b8}
-.toggle{position:relative;width:40px;height:22px;cursor:pointer}
+:root{--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--border:rgba(84,84,88,0.65);--text:#fff;--muted:#8e8e93;--blue:#0a84ff;--green:#30d158;--red:#ff453a;--orange:#ff9f0a;--yellow:#ffd60a;--radius:13px}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+.header{background:rgba(28,28,30,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:0.5px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header h1{font-size:17px;font-weight:600}
+.hdr-right{display:flex;gap:8px;align-items:center}
+.container{max-width:500px;margin:0 auto;padding:16px;padding-bottom:100px}
+.section-label{font-size:13px;color:var(--muted);font-weight:500;margin:20px 0 8px 4px;text-transform:uppercase;letter-spacing:0.5px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+@media(max-width:500px){.stats{grid-template-columns:repeat(2,1fr)}.stats .stat:nth-child(5){grid-column:span 2}}
+.stat{background:var(--card);border-radius:var(--radius);padding:14px 10px;text-align:center}
+.stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.stat .value{font-size:22px;font-weight:700}
+.stat .value.g{color:var(--green)}.stat .value.b{color:var(--blue)}.stat .value.p{color:#bf5af2}.stat .value.r{color:var(--red)}.stat .value.y{color:var(--yellow)}
+.add-btn{width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius);font-size:16px;font-weight:600;cursor:pointer;transition:all .15s;margin-bottom:20px}
+.add-btn:active{transform:scale(0.98);opacity:0.8}
+.search-bar{display:flex;gap:10px;margin-bottom:16px}
+.search-bar input{flex:1;padding:10px 14px;background:var(--card2);border:none;border-radius:10px;color:var(--text);font-size:15px;outline:none}
+.search-bar select{padding:10px 14px;background:var(--card2);border:none;border-radius:10px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none;min-width:120px}
+.inbound-group{margin-bottom:20px}
+.inbound-header{padding:12px 16px;background:var(--card);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.inbound-header h3{font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
+.inbound-header .count{color:var(--muted);font-size:13px;font-weight:400}
+.inbound-header .arrow{color:var(--muted);transition:transform .2s;font-size:12px}
+.inbound-header.collapsed .arrow{transform:rotate(-90deg)}
+.inbound-users{margin-top:2px}
+.inbound-users.hidden{display:none}
+.user-card{background:var(--card);border-radius:var(--radius);padding:14px 16px;margin-bottom:2px;transition:background .15s}
+.user-card:last-child{margin-bottom:0}
+.user-card:hover{background:rgba(10,132,255,0.05)}
+.user-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.user-name{font-size:16px;font-weight:600}
+.user-meta{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-bottom:10px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.badge.g{background:rgba(48,209,88,0.18);color:var(--green)}.badge.r{background:rgba(255,69,58,0.18);color:var(--red)}
+.badge.o{background:rgba(255,159,10,0.18);color:var(--orange)}.badge.i{background:rgba(142,142,147,0.18);color:var(--muted)}
+.toggle{position:relative;width:51px;height:31px;cursor:pointer;flex-shrink:0}
 .toggle input{opacity:0;width:0;height:0}
-.toggle .slider{position:absolute;inset:0;background:rgba(239,68,68,0.3);border-radius:22px;transition:.3s}
-.toggle .slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
-.toggle input:checked+.slider{background:rgba(34,197,94,0.5)}
-.toggle input:checked+.slider::before{transform:translateX(18px)}
-.user-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;min-height:40px}
-.btn:active{transform:scale(0.97)}
-.btn-p{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff}
-.btn-p:hover{box-shadow:0 4px 15px rgba(59,130,246,0.4)}
-.btn-s{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff}
-.btn-s:hover{box-shadow:0 4px 15px rgba(34,197,94,0.4)}
-.btn-d{background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.2)}
-.btn-d:hover{background:rgba(239,68,68,0.2)}
-.btn-g{background:rgba(148,163,184,0.1);color:var(--muted);border:1px solid var(--border)}
-.btn-g:hover{background:rgba(148,163,184,0.15);color:var(--text)}
+.toggle .slider{position:absolute;inset:0;background:var(--card2);border-radius:31px;transition:.3s}
+.toggle .slider::before{content:'';position:absolute;width:27px;height:27px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
+.toggle input:checked+.slider{background:var(--green)}
+.toggle input:checked+.slider::before{transform:translateX(20px)}
+.user-actions{display:flex;gap:8px;align-items:center}
+.user-actions .spacer{flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;border:none;cursor:pointer;transition:all .15s;background:var(--card2);color:var(--blue)}
+.btn:active{transform:scale(0.95);opacity:0.7}
+.btn-red{color:var(--red)}
 .btn-full{width:100%}
-.btn-xl{padding:16px 20px;font-size:15px;min-height:52px;border-radius:14px}
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:200;align-items:flex-end;justify-content:center;padding:0}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:200;align-items:flex-end;justify-content:center;padding:0}
 .modal-bg.on{display:flex}
 @media(min-width:600px){.modal-bg{align-items:center;padding:16px}}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;animation:slideUp .25s ease}
+.modal{background:var(--card);border-radius:20px 20px 0 0;padding:20px 20px 32px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;animation:slideUp .25s ease}
 @media(min-width:600px){.modal{border-radius:20px}}
 @keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
-.modal h3{font-size:18px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:8px}
-.modal-handle{width:40px;height:4px;background:rgba(148,163,184,0.3);border-radius:2px;margin:0 auto 16px;display:block}
+.modal-handle{width:36px;height:5px;background:rgba(142,142,147,0.3);border-radius:3px;margin:0 auto 16px;display:block}
+.modal h3{font-size:18px;font-weight:600;margin-bottom:20px;text-align:center}
 .fg{margin-bottom:16px}
-.fg label{display:block;margin-bottom:6px;font-size:12px;color:var(--muted);font-weight:500}
-.fg input,.fg select{width:100%;padding:13px 14px;background:rgba(15,23,42,0.8);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none;transition:border-color .2s;-webkit-appearance:none}
-.fg input:focus,.fg select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
-.fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.fg label{display:block;margin-bottom:6px;font-size:13px;color:var(--muted);font-weight:500}
+.fg input,.fg select{width:100%;padding:12px 14px;background:var(--card2);border:none;border-radius:10px;color:var(--text);font-size:15px;outline:none;transition:background .2s;-webkit-appearance:none}
+.fg input:focus,.fg select:focus{background:#3a3a3c}
+.fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238e8e93'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
 .fa{display:flex;gap:10px;margin-top:20px}
-.fa .btn{flex:1}
-.sub-url{background:rgba(15,23,42,0.8);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:'SF Mono',Monaco,monospace;font-size:11px;word-break:break-all;cursor:pointer;transition:border-color .2s;line-height:1.5}
-.sub-url:active{border-color:var(--accent);background:rgba(59,130,246,0.05)}
-.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
-.empty-icon{font-size:40px;margin-bottom:8px;opacity:0.5}
-.quick-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
-.qa-btn{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:all .2s}
-.qa-btn:hover{border-color:var(--accent);background:rgba(59,130,246,0.05)}
-.qa-btn .icon{font-size:28px;margin-bottom:6px}
-.qa-btn .txt{font-size:13px;font-weight:500;color:var(--muted)}
-.search-bar{display:flex;gap:8px;margin-bottom:16px}
-.search-bar input{flex:1;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none}
-.search-bar input:focus{border-color:var(--accent)}
-.search-bar select{padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none;min-width:140px}
-.inbound-group{margin-bottom:16px}
-.inbound-header{padding:10px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:2px}
-.inbound-header h3{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
-.inbound-header .count{color:var(--muted);font-size:12px}
-.inbound-header .arrow{color:var(--muted);transition:transform .2s}
-.inbound-header.collapsed .arrow{transform:rotate(-90deg)}
-.inbound-users{background:var(--card);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden}
-.inbound-users.hidden{display:none}
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:999;animation:toastIn .3s;box-shadow:0 8px 25px rgba(0,0,0,0.3)}
+.fa .btn{flex:1;padding:14px;font-size:16px;font-weight:600}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-cancel{background:var(--card2);color:var(--text)}
+.sub-url{background:var(--card2);border-radius:10px;padding:12px;font-family:'SF Mono',Monaco,monospace;font-size:11px;word-break:break-all;cursor:pointer;transition:background .2s;line-height:1.5;color:var(--text)}
+.sub-url:active{background:#3a3a3c}
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:15px}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:999;animation:toastIn .3s;box-shadow:0 8px 25px rgba(0,0,0,0.4)}
 .toast.ok{background:var(--green);color:#fff}
 .toast.er{background:var(--red);color:#fff}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-.btn-load{opacity:0.6;pointer-events:none}
+.btn-load{opacity:0.5;pointer-events:none}
 </style></head><body>
 <div class="header">
-<h1><span>&#9889;</span> Xray</h1>
+<h1>Xray</h1>
 <div class="hdr-right">
-<a href="{{ basepath }}/logout" class="btn btn-g" style="font-size:12px;padding:8px 12px">Exit</a>
+<a href="{{ basepath }}/logout" class="btn" style="font-size:13px;padding:6px 12px">Выйти</a>
 </div></div>
 <div class="container">
 <div class="stats">
-<div class="stat"><div class="label">Users</div><div class="value b" id="stat-total">{{ users|length }}</div></div>
-<div class="stat"><div class="label">Active</div><div class="value g" id="stat-active">{{ active }}</div></div>
-<div class="stat"><div class="label">Expired</div><div class="value r" id="stat-expired">{{ expired }}</div></div>
-<div class="stat"><div class="label">Inactive</div><div class="value p" id="stat-inactive">{{ inactive }}</div></div>
-<div class="stat"><div class="label">Traffic</div><div class="value p" id="stat-traffic">{{ total_tr }}</div></div>
+<div class="stat"><div class="label">Всего</div><div class="value b" id="stat-total">{{ users|length }}</div></div>
+<div class="stat"><div class="label">Активные</div><div class="value g" id="stat-active">{{ active }}</div></div>
+<div class="stat"><div class="label">Истекшие</div><div class="value r" id="stat-expired">{{ expired }}</div></div>
+<div class="stat"><div class="label">Неактивные</div><div class="value p" id="stat-inactive">{{ inactive }}</div></div>
+<div class="stat"><div class="label">Трафик</div><div class="value y" id="stat-traffic">{{ total_tr }}</div></div>
 </div>
-<div class="quick-actions">
-<div class="qa-btn" onclick="showModal('m-add')"><div class="icon">+</div><div class="txt">Add User</div></div>
-<div class="qa-btn" onclick="location.reload()"><div class="icon">&#8635;</div><div class="txt">Refresh</div></div>
-</div>
+<button class="add-btn" onclick="showModal('m-add')">Добавить пользователя</button>
 <div class="search-bar">
-<input type="text" id="searchInput" placeholder="&#128269; Search users..." oninput="filterUsers()">
+<input type="text" id="searchInput" placeholder="Поиск..." oninput="filterUsers()">
 <select id="sortBy" onchange="sortUsers()">
-<option value="name">Name A-Z</option>
-<option value="name-desc">Name Z-A</option>
-<option value="traffic">Traffic</option>
-<option value="expiry">Expiry</option>
-<option value="status">Status</option>
+<option value="name">Имя A-Я</option>
+<option value="name-desc">Имя Я-А</option>
+<option value="traffic">Трафик</option>
+<option value="expiry">Срок</option>
+<option value="status">Статус</option>
 </select>
 </div>
 {% for inb in inbounds %}
 {% set inb_users = users | selectattr("inbound_id", "equalto", inb.id) | list %}
 <div class="inbound-group" id="group-{{ inb.id }}">
 <div class="inbound-header" onclick="toggleInbound({{ inb.id }})">
-<h3>{{ inb.remark }} <span style="color:var(--muted);font-size:12px">{{ inb.protocol }}:{{ inb.port }}</span></h3>
-<span><span class="count" id="count-{{ inb.id }}">{{ inb_users|length }}</span> <span class="arrow">&#9660;</span></span>
+<h3>{{ inb.remark }} <span class="count" id="count-{{ inb.id }}">{{ inb_users|length }}</span></h3>
+<span class="arrow">&#9662;</span>
 </div>
 <div class="inbound-users" id="inbound-{{ inb.id }}">
 {% for u in inb_users %}
 <div class="user-card" id="user-{{ u.uuid }}" data-name="{{ u.email|lower }}" data-traffic="{{ u.traffic_bytes }}" data-expiry="{{ u.expiry }}" data-status="{% if not u.enable %}3{% elif u.expired %}2{% else %}1{% endif %}">
-<div class="user-top"><div class="user-name">{{ u.email }}
-{% if not u.enable and u.expired %}<span class="badge i">Inactive</span>{% elif not u.enable %}<span class="badge r">Off</span>{% elif u.expired %}<span class="badge o">Expired</span>{% else %}<span class="badge g">Active</span>{% endif %}</div></div>
-<div class="user-meta"><span>&#128190; {{ u.traffic }}</span><span>&#128197; {{ u.expiry_str }}</span></div>
+<div class="user-top">
+<div class="user-name">{{ u.email }} {% if not u.enable and u.expired %}<span class="badge i">Неактивен</span>{% elif not u.enable %}<span class="badge r">Выкл</span>{% elif u.expired %}<span class="badge o">Истёк</span>{% else %}<span class="badge g">Активен</span>{% endif %}</div>
+<label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" {% if u.enable %}checked{% endif %} onchange="toggleUser('{{ u.email }}',{{ u.inbound_id }},'{{ u.uuid }}',this.checked)"><span class="slider"></span></label>
+</div>
+<div class="user-meta"><span>{{ u.traffic }}</span><span>{{ u.expiry_str }}</span></div>
 <div class="user-actions">
-<button class="btn btn-p" style="flex:1" onclick="showLinks('{{ u.email }}','{{ u.vless_url|e }}','{{ u.sub_url|e }}')">&#128279; Links</button>
-<button class="btn btn-s" style="flex:1" onclick="showExtend('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">&#128197; Extend</button>
-<label class="toggle" onclick="event.stopPropagation()" title="Enable/Disable"><input type="checkbox" {% if u.enable %}checked{% endif %} onchange="toggleUser('{{ u.email }}',{{ u.inbound_id }},'{{ u.uuid }}',this.checked)"><span class="slider"></span></label>
-<button class="btn btn-d" onclick="delUser('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">&#128465;</button>
+<button class="btn" onclick="showLinks('{{ u.email }}','{{ u.vless_url|e }}','{{ u.sub_url|e }}')">Ссылки</button>
+<button class="btn" onclick="showExtend('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">Продлить</button>
+<button class="btn btn-red" onclick="delUser('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">Удалить</button>
 </div></div>
 {% endfor %}
-{% if not inb_users %}<div class="empty" style="padding:20px"><div class="empty-icon">&#128100;</div>No users</div>{% endif %}
+{% if not inb_users %}<div class="empty">Нет пользователей</div>{% endif %}
 </div></div>
 {% endfor %}
 
 <div class="modal-bg" id="m-add" onclick="if(event.target===this)hideModal('m-add')">
-<div class="modal"><span class="modal-handle"></span><h3>&#10133; New User</h3>
-<div class="fg"><label>Name</label><input type="text" id="add-email" required placeholder="e.g. john"></div>
-<div class="fg"><label>Expiry (days)</label><input type="number" id="add-days" value="30" min="1"></div>
-<div class="fg"><label>Traffic Limit (GB, 0=unlimited)</label><input type="number" id="add-gb" value="0" min="0"></div>
+<div class="modal"><span class="modal-handle"></span><h3>Новый пользователь</h3>
+<div class="fg"><label>Имя</label><input type="text" id="add-email" required placeholder="например ivan"></div>
+<div class="fg"><label>Срок (дней)</label><input type="number" id="add-days" value="30" min="1"></div>
+<div class="fg"><label>Трафик (ГБ, 0 = безлимит)</label><input type="number" id="add-gb" value="0" min="0"></div>
 <div class="fg"><label>Inbound</label><select id="add-inbound">{% for i in inbounds %}<option value="{{ i.id }}">{{ i.remark }}</option>{% endfor %}</select></div>
-<div class="fa"><button type="button" class="btn btn-g" onclick="hideModal('m-add')">Cancel</button><button type="button" class="btn btn-s btn-xl" id="btn-add" onclick="doAdd()">Create</button></div>
+<div class="fa"><button type="button" class="btn btn-cancel" onclick="hideModal('m-add')">Отмена</button><button type="button" class="btn btn-primary" id="btn-add" onclick="doAdd()">Создать</button></div>
 </div></div>
 
 <div class="modal-bg" id="m-ext" onclick="if(event.target===this)hideModal('m-ext')">
-<div class="modal"><span class="modal-handle"></span><h3>&#128197; Extend</h3>
+<div class="modal"><span class="modal-handle"></span><h3>Продление подписки</h3>
 <input type="hidden" id="ext-email"><input type="hidden" id="ext-inbound"><input type="hidden" id="ext-uuid">
-<div class="fg"><label>Days to add</label><input type="number" id="ext-days" value="30" min="1" oninput="syncDateFromDays()"></div>
-<div class="fg"><label>New expiry date</label><input type="date" id="ext-date" oninput="syncDaysFromDate()"></div>
-<div class="fa"><button type="button" class="btn btn-g" onclick="hideModal('m-ext')">Cancel</button><button type="button" class="btn btn-s btn-xl" id="btn-ext" onclick="doExtend()">Extend</button></div>
+<div class="fg"><label>Дней</label><input type="number" id="ext-days" value="30" min="1" oninput="syncDateFromDays()"></div>
+<div class="fg"><label>Новая дата</label><input type="date" id="ext-date" oninput="syncDaysFromDate()"></div>
+<div class="fa"><button type="button" class="btn btn-cancel" onclick="hideModal('m-ext')">Отмена</button><button type="button" class="btn btn-primary" id="btn-ext" onclick="doExtend()">Продлить</button></div>
 </div></div>
 
 <div class="modal-bg" id="m-links" onclick="if(event.target===this)hideModal('m-links')">
-<div class="modal"><span class="modal-handle"></span><h3>&#128279; Links</h3>
+<div class="modal"><span class="modal-handle"></span><h3>Ссылки</h3>
 <p style="color:var(--muted);font-size:13px;margin-bottom:12px" id="links-user"></p>
-<div class="fg"><label>VLESS Link</label><div class="sub-url" id="link-vless" onclick="copyEl(this)"></div></div>
-<div class="fg"><label>Subscription URL</label><div class="sub-url" id="link-sub" onclick="copyEl(this)"></div></div>
-<div class="fa"><button type="button" class="btn btn-g btn-full" onclick="hideModal('m-links')">Close</button></div>
+<div class="fg"><label>VLESS</label><div class="sub-url" id="link-vless" onclick="copyEl(this)"></div></div>
+<div class="fg"><label>Подписка</label><div class="sub-url" id="link-sub" onclick="copyEl(this)"></div></div>
+<div class="fa"><button type="button" class="btn btn-cancel btn-full" onclick="hideModal('m-links')">Закрыть</button></div>
 </div></div>
 
 <script>
@@ -455,50 +434,48 @@ document.getElementById('ext-days').value=30;document.getElementById('ext-date')
 function syncDateFromDays(){var d=parseInt(document.getElementById('ext-days').value)||0;var now=new Date();now.setDate(now.getDate()+d);document.getElementById('ext-date').value=now.toISOString().split('T')[0]}
 function syncDaysFromDate(){var ds=document.getElementById('ext-date').value;if(!ds)return;var diff=Math.ceil((new Date(ds)-new Date())/(86400000));if(diff>0)document.getElementById('ext-days').value=diff}
 function showLinks(e,v,s){document.getElementById('links-user').textContent=e;document.getElementById('link-vless').textContent=v;document.getElementById('link-sub').textContent=s;showModal('m-links')}
-function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{toast('Copied!',true)})}
+function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{toast('Скопировано',true)})}
 function toggleInbound(id){var el=document.getElementById('inbound-'+id);var hdr=el.previousElementSibling;el.classList.toggle('hidden');hdr.classList.toggle('collapsed')}
 function filterUsers(){var q=document.getElementById('searchInput').value.toLowerCase();document.querySelectorAll('.user-card').forEach(c=>{c.style.display=c.dataset.name.includes(q)?'':'none'})}
 function sortUsers(){var s=document.getElementById('sortBy').value;document.querySelectorAll('.inbound-users').forEach(g=>{var cards=Array.from(g.querySelectorAll('.user-card'));cards.sort((a,b)=>{if(s==='name')return a.dataset.name.localeCompare(b.dataset.name);if(s==='name-desc')return b.dataset.name.localeCompare(a.dataset.name);if(s==='traffic')return parseInt(b.dataset.traffic)-parseInt(a.dataset.traffic);if(s==='expiry')return parseInt(a.dataset.expiry)-parseInt(b.dataset.expiry);if(s==='status')return parseInt(a.dataset.status)-parseInt(b.dataset.status);return 0});cards.forEach(c=>g.appendChild(c))})}
 async function api(path,body){var r=await fetch(BP+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return await r.json()}
 async function doAdd(){
-var btn=document.getElementById('btn-add');btn.classList.add('btn-load');btn.textContent='Creating...';
+var btn=document.getElementById('btn-add');btn.classList.add('btn-load');btn.textContent='Создание...';
 var d=await api('/api/add',{email:document.getElementById('add-email').value,days:parseInt(document.getElementById('add-days').value),total_gb:parseInt(document.getElementById('add-gb').value),inbound_id:parseInt(document.getElementById('add-inbound').value)});
-btn.classList.remove('btn-load');btn.textContent='Create';
-if(d.ok){hideModal('m-add');toast('User '+d.user.email+' created',true);addUserCard(d.user,d.inbound);document.getElementById('add-email').value='';updateStats(d.stats)}
-else toast(d.msg||'Error',false)}
+btn.classList.remove('btn-load');btn.textContent='Создать';
+if(d.ok){hideModal('m-add');toast(d.user.email+' создан',true);addUserCard(d.user,d.inbound);document.getElementById('add-email').value='';updateStats(d.stats)}
+else toast(d.msg||'Ошибка',false)}
 async function doExtend(){
-var btn=document.getElementById('btn-ext');btn.classList.add('btn-load');btn.textContent='Extending...';
+var btn=document.getElementById('btn-ext');btn.classList.add('btn-load');btn.textContent='Продление...';
 var d=await api('/api/extend',{email:document.getElementById('ext-email').value,inbound_id:parseInt(document.getElementById('ext-inbound').value),client_uuid:document.getElementById('ext-uuid').value,days:parseInt(document.getElementById('ext-days').value),expiry_date:document.getElementById('ext-date').value});
-btn.classList.remove('btn-load');btn.textContent='Extend';
-if(d.ok){hideModal('m-ext');toast(d.user.email+' extended to '+d.user.expiry_str,true);updateUserCard(d.user)}
-else toast(d.msg||'Error',false)}
-async function delUser(email,inbound_id,uuid){
-if(!confirm('Delete '+email+'?'))return;
-var d=await api('/api/delete',{email:email,inbound_id:inbound_id,client_uuid:uuid});
-if(d.ok){toast('User '+email+' deleted',true);var el=document.getElementById('user-'+uuid);if(el)el.remove();updateStats(d.stats)}
-else toast(d.msg||'Error',false)}
+btn.classList.remove('btn-load');btn.textContent='Продлить';
+if(d.ok){hideModal('m-ext');toast(d.user.email+' продлён до '+d.user.expiry_str,true);updateUserCard(d.user)}
+else toast(d.msg||'Ошибка',false)}
 async function toggleUser(email,inbound_id,uuid,enable){
 var d=await api('/api/toggle',{email:email,inbound_id:inbound_id,client_uuid:uuid,enable:enable});
-if(d.ok){updateUserCard(d.user);updateStats(d.stats);toast(email+(enable?' enabled':' disabled'),true)}
-else{toast(d.msg||'Error',false);location.reload()}}
+if(d.ok){updateUserCard(d.user);updateStats(d.stats);toast(email+(enable?' включён':' выключен'),true)}
+else{toast(d.msg||'Ошибка',false);location.reload()}}
+async function delUser(email,inbound_id,uuid){
+if(!confirm('Удалить '+email+'?'))return;
+var d=await api('/api/delete',{email:email,inbound_id:inbound_id,client_uuid:uuid});
+if(d.ok){toast(email+' удалён',true);var el=document.getElementById('user-'+uuid);if(el)el.remove();updateStats(d.stats)}
+else toast(d.msg||'Ошибка',false)}
 function addUserCard(u,inb){var g=document.getElementById('inbound-'+u.inbound_id);if(!g){location.reload();return}
 var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
-h+='<div class="user-top"><div class="user-name">'+u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):(u.expired?'<span class="badge i">Inactive</span>':'<span class="badge r">Off</span>'))+'</div></div>';
-h+='<div class="user-meta"><span>&#128190; '+u.traffic+'</span><span>&#128197; '+u.expiry_str+'</span></div>';
+h+='<div class="user-top"><div class="user-name">'+u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'))+'</div>';
+h+='<label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" '+(u.enable?'checked':'')+' onchange="toggleUser(this.dataset.email,this.dataset.iid,this.dataset.uid,this.checked)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'"><span class="slider"></span></label></div>';
+h+='<div class="user-meta"><span>'+u.traffic+'</span><span>'+u.expiry_str+'</span></div>';
 h+='<div class="user-actions">';
-h+='<button class="btn btn-p" style="flex:1" onclick="showLinks(this.dataset.email,this.dataset.vless,this.dataset.sub)" data-email="'+u.email+'" data-vless="'+u.vless_url+'" data-sub="'+u.sub_url+'">&#128279; Links</button>';
-h+='<button class="btn btn-s" style="flex:1" onclick="showExtend(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">&#128197; Extend</button>';
-h+='<label class="toggle" onclick="event.stopPropagation()" title="Enable/Disable"><input type="checkbox" '+(u.enable?'checked':'')+' onchange="toggleUser(this.dataset.email,this.dataset.iid,this.dataset.uid,this.checked)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'"><span class="slider"></span></label>';
-h+='<button class="btn btn-d" onclick="delUser(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">&#128465;</button></div></div>';
+h+='<button class="btn" onclick="showLinks(this.dataset.email,this.dataset.vless,this.dataset.sub)" data-email="'+u.email+'" data-vless="'+u.vless_url+'" data-sub="'+u.sub_url+'">Ссылки</button>';
+h+='<button class="btn" onclick="showExtend(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">Продлить</button>';
+h+='<button class="btn btn-red" onclick="delUser(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">Удалить</button></div></div>';
 var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML('beforeend',h)}
 function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
 el.dataset.expiry=u.expiry;el.dataset.status=u.enable?(u.expired?'2':'1'):'3';
-el.querySelector('.user-name').innerHTML=u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):(u.expired?'<span class="badge i">Inactive</span>':'<span class="badge r">Off</span>'));
-el.querySelector('.user-meta').innerHTML='<span>&#128190; '+u.traffic+'</span><span>&#128197; '+u.expiry_str+'</span>';
+el.querySelector('.user-name').innerHTML=u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'));
+el.querySelector('.user-meta').innerHTML='<span>'+u.traffic+'</span><span>'+u.expiry_str+'</span>';
 var cb=el.querySelector('.toggle input');if(cb)cb.checked=u.enable}
-function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-active').textContent=s.active;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-inactive').textContent=s.inactive;document.getElementById('stat-traffic').textContent=s.traffic;
-var inbCounts={};s.users.forEach(u=>{inbCounts[u.inbound_id]=(inbCounts[u.inbound_id]||0)+1});
-Object.keys(inbCounts).forEach(id=>{var el=document.getElementById('count-'+id);if(el)el.textContent=inbCounts[id]})}
+function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-active').textContent=s.active;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-inactive').textContent=s.inactive;document.getElementById('stat-traffic').textContent=s.traffic;}
 </script></body></html>'''
 
 
