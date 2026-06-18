@@ -235,10 +235,12 @@ def _get_stats():
             elif is_expired: expired += 1
             elif en: active += 1
             exp_str = datetime.fromtimestamp(exp / 1000).strftime("%d.%m.%Y") if exp > 0 else "Never"
+            days_left = max(0, int((exp - now_ms) / 86400000)) if exp > 0 else 9999
             users.append({
                 "email": email, "uuid": cid, "inbound_id": inb["id"],
                 "traffic": fmt_bytes(used), "traffic_bytes": used,
                 "expiry_str": exp_str, "expiry": exp if exp > 0 else 9999999999999,
+                "days_left": days_left,
                 "expired": is_expired, "enable": en,
                 "vless_url": build_link(cid, email, inb),
                 "sub_url": build_sub_url(sub_id),
@@ -297,8 +299,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .hdr-right{display:flex;gap:8px;align-items:center}
 .container{max-width:500px;margin:0 auto;padding:16px;padding-bottom:100px}
 .section-label{font-size:13px;color:var(--muted);font-weight:500;margin:20px 0 8px 4px;text-transform:uppercase;letter-spacing:0.5px}
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
-@media(max-width:500px){.stats{grid-template-columns:repeat(2,1fr)}.stats .stat:nth-child(5){grid-column:span 2}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+@media(max-width:500px){.stats{grid-template-columns:repeat(2,1fr)}}
 .stat{background:var(--card);border-radius:var(--radius);padding:14px 10px;text-align:center}
 .stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
 .stat .value{font-size:22px;font-weight:700}
@@ -324,6 +326,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .user-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .user-name{font-size:16px;font-weight:600}
 .user-meta{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-bottom:10px}
+.c-green{color:var(--green)}.c-yellow{color:var(--yellow)}.c-red{color:var(--red)}
+.user-card.is-online{border-left:3px solid var(--green)}
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
 .badge.g{background:rgba(48,209,88,0.18);color:var(--green)}.badge.r{background:rgba(255,69,58,0.18);color:var(--red)}
 .badge.o{background:rgba(255,159,10,0.18);color:var(--orange)}.badge.i{background:rgba(142,142,147,0.18);color:var(--muted)}
@@ -375,9 +379,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 <div class="container">
 <div class="stats">
 <div class="stat"><div class="label">Всего</div><div class="value b" id="stat-total">{{ users|length }}</div></div>
-<div class="stat"><div class="label">Активные</div><div class="value g" id="stat-active">{{ active }}</div></div>
-<div class="stat"><div class="label">Истекшие</div><div class="value r" id="stat-expired">{{ expired }}</div></div>
-<div class="stat"><div class="label">Неактивные</div><div class="value p" id="stat-inactive">{{ inactive }}</div></div>
+<div class="stat"><div class="label">Онлайн</div><div class="value g" id="stat-online">0</div></div>
+<div class="stat"><div class="label">Истёкшие</div><div class="value r" id="stat-expired">{{ expired }}</div></div>
 <div class="stat"><div class="label">Трафик</div><div class="value y" id="stat-traffic">{{ total_tr }}</div></div>
 </div>
 <button class="add-btn" onclick="showModal('m-add')">Добавить пользователя</button>
@@ -405,7 +408,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 <div class="user-name">{{ u.email }} {% if not u.enable and u.expired %}<span class="badge i">Неактивен</span>{% elif not u.enable %}<span class="badge r">Выкл</span>{% elif u.expired %}<span class="badge o">Истёк</span>{% else %}<span class="badge g">Активен</span>{% endif %}</div>
 <label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" {% if u.enable %}checked{% endif %} onchange="toggleUser('{{ u.email }}',{{ u.inbound_id }},'{{ u.uuid }}',this.checked)"><span class="slider"></span></label>
 </div>
-<div class="user-meta"><span>{{ u.traffic }}</span><span>{{ u.expiry_str }}</span></div>
+<div class="user-meta"><span>{{ u.traffic }}</span><span class="{% if u.days_left <= 1 %}c-red{% elif u.days_left <= 5 %}c-yellow{% else %}c-green{% endif %}">{{ u.days_left }} дн.</span></div>
 <div class="user-actions">
 <button class="btn" onclick="showLinks('{{ u.email }}','{{ u.vless_url|e }}','{{ u.sub_url|e }}')">Ссылки</button>
 <button class="btn" onclick="showExtend('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">Продлить</button>
@@ -420,7 +423,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 <div class="modal"><span class="modal-handle"></span><h3>Новый пользователь</h3>
 <div class="fg"><label>Имя</label><input type="text" id="add-email" required placeholder="например ivan"></div>
 <div class="fg"><label>Срок (дней)</label><input type="number" id="add-days" value="30" min="1"></div>
-<div class="fg"><label>Трафик (ГБ, 0 = безлимит)</label><input type="number" id="add-gb" value="0" min="0"></div>
 <div class="fg"><label>Inbound</label><select id="add-inbound">{% for i in inbounds %}<option value="{{ i.id }}">{{ i.remark }}</option>{% endfor %}</select></div>
 <div class="fa"><button type="button" class="btn btn-cancel" onclick="hideModal('m-add')">Отмена</button><button type="button" class="btn btn-primary" id="btn-add" onclick="doAdd()">Создать</button></div>
 </div></div>
@@ -459,7 +461,7 @@ function sortUsers(){var s=document.getElementById('sortBy').value;document.quer
 async function api(path,body){var r=await fetch(BP+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return await r.json()}
 async function doAdd(){
 var btn=document.getElementById('btn-add');btn.classList.add('btn-load');btn.textContent='Создание...';
-var d=await api('/api/add',{email:document.getElementById('add-email').value,days:parseInt(document.getElementById('add-days').value),total_gb:parseInt(document.getElementById('add-gb').value),inbound_id:parseInt(document.getElementById('add-inbound').value)});
+var d=await api('/api/add',{email:document.getElementById('add-email').value,days:parseInt(document.getElementById('add-days').value),inbound_id:parseInt(document.getElementById('add-inbound').value)});
 btn.classList.remove('btn-load');btn.textContent='Создать';
 if(d.ok){hideModal('m-add');toast(d.user.email+' создан',true);addUserCard(d.user,d.inbound);document.getElementById('add-email').value='';updateStats(d.stats)}
 else toast(d.msg||'Ошибка',false)}
@@ -482,7 +484,7 @@ function addUserCard(u,inb){var g=document.getElementById('inbound-'+u.inbound_i
 var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
 h+='<div class="user-top"><div class="user-name">'+u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'))+'</div>';
 h+='<label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" '+(u.enable?'checked':'')+' onchange="toggleUser(this.dataset.email,this.dataset.iid,this.dataset.uid,this.checked)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'"><span class="slider"></span></label></div>';
-h+='<div class="user-meta"><span>'+u.traffic+'</span><span>'+u.expiry_str+'</span></div>';
+h+='<div class="user-meta"><span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+u.days_left+' дн.</span></div>';
 h+='<div class="user-actions">';
 h+='<button class="btn" onclick="showLinks(this.dataset.email,this.dataset.vless,this.dataset.sub)" data-email="'+u.email+'" data-vless="'+u.vless_url+'" data-sub="'+u.sub_url+'">Ссылки</button>';
 h+='<button class="btn" onclick="showExtend(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">Продлить</button>';
@@ -491,12 +493,14 @@ var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML
 function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
 el.dataset.expiry=u.expiry;el.dataset.status=u.enable?(u.expired?'2':'1'):'3';
 el.querySelector('.user-name').innerHTML=u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'));
-el.querySelector('.user-meta').innerHTML='<span>'+u.traffic+'</span><span>'+u.expiry_str+'</span>';
+el.querySelector('.user-meta').innerHTML='<span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+u.days_left+' дн.</span>';
 var cb=el.querySelector('.toggle input');if(cb)cb.checked=u.enable}
-function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-active').textContent=s.active;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-inactive').textContent=s.inactive;document.getElementById('stat-traffic').textContent=s.traffic;}
+function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-traffic').textContent=s.traffic;}
 function initReveal(){var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('active')}else{e.target.classList.remove('active')}})},{threshold:0.05});document.querySelectorAll('.user-card').forEach(function(c){c.classList.add('card-enter');obs.observe(c)});window._revealObs=obs}
 function addUserCardReveal(el){el.classList.add('card-enter');requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add('active')})});if(window._revealObs)window._revealObs.observe(el)}
 document.addEventListener('DOMContentLoaded',initReveal);
+async function pollOnline(){try{var r=await fetch(BP+'/api/online');var d=await r.json();if(d.ok){document.getElementById('stat-online').textContent=d.online.length;d.online.forEach(function(e){var cards=document.querySelectorAll('.user-card');cards.forEach(function(c){if(c.dataset.name===e.toLowerCase())c.classList.add('is-online')})});document.querySelectorAll('.user-card.is-online').forEach(function(c){if(!d.online.some(function(e){return e.toLowerCase()===c.dataset.name}))c.classList.remove('is-online')})}}catch(e){}}
+setInterval(pollOnline,15000);pollOnline();
 </script></body></html>'''
 
 
@@ -554,11 +558,13 @@ def dashboard():
             elif en:
                 active += 1
             exp_str = datetime.fromtimestamp(exp / 1000).strftime("%d.%m.%Y") if exp > 0 else "Never"
+            days_left = max(0, int((exp - now_ms) / 86400000)) if exp > 0 else 9999
             users.append({
                 "email": email, "uuid": cid, "inbound_id": inb["id"],
                 "proto": f'{inb["protocol"]}:{inb["port"]}',
                 "traffic": fmt_bytes(used), "traffic_bytes": used,
                 "expiry_str": exp_str, "expiry": exp if exp > 0 else 9999999999999,
+                "days_left": days_left,
                 "expired": is_expired, "enable": en,
                 "vless_url": build_link(cid, email, inb),
                 "sub_url": build_sub_url(sub_id),
@@ -685,6 +691,22 @@ def api_toggle():
     stats = _get_stats()
     user_stats = next((u for u in stats["users"] if u["email"] == email), None)
     return jsonify({"ok": True, "user": user_stats, "stats": stats})
+
+
+@app.route("/api/online", methods=["GET"])
+@login_required
+def api_online():
+    resp = xui_api("GET", "/panel/api/inbounds/list")
+    inbounds = resp.get("obj", []) if resp.get("success") else []
+    now_ms = int(time.time() * 1000)
+    ONLINE_THRESHOLD = 5 * 60 * 1000
+    online = []
+    for inb in inbounds:
+        for s in inb.get("clientStats", []):
+            last = s.get("lastOnline", 0)
+            if last and (now_ms - last) < ONLINE_THRESHOLD:
+                online.append(s.get("email", ""))
+    return jsonify({"ok": True, "online": online})
 
 
 @app.route("/api/delete", methods=["POST"])
