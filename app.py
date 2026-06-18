@@ -277,7 +277,7 @@ DASHBOARD_PAGE = '''<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name=
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--border:rgba(84,84,88,0.65);--text:#fff;--muted:#8e8e93;--blue:#0a84ff;--green:#30d158;--red:#ff453a;--orange:#ff9f0a;--yellow:#ffd60a;--radius:13px}
-body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:linear-gradient(160deg,#0a0a0a 0%,#0d1117 40%,#0a0a0a 100%);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 .header{background:rgba(28,28,30,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:0.5px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .header h1{font-size:17px;font-weight:600}
 .hdr-right{display:flex;gap:8px;align-items:center}
@@ -302,11 +302,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .inbound-header.collapsed .arrow{transform:rotate(-90deg)}
 .inbound-users{margin-top:2px}
 .inbound-users.hidden{display:none}
-.user-card{background:var(--card);border-radius:var(--radius);padding:14px 16px;margin-bottom:2px;transition:transform .2s ease,box-shadow .2s ease,opacity .4s ease}
+.user-card{background:rgba(28,28,30,0.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:var(--radius);padding:14px 16px;margin-bottom:2px;transition:transform .2s ease,box-shadow .2s ease}
 .user-card:last-child{margin-bottom:0}
-.user-card:hover{transform:scale(1.015);box-shadow:0 2px 16px rgba(10,132,255,0.12)}
-.user-card.reveal{opacity:0;transform:translateY(12px)}
-.user-card.reveal.visible{opacity:1;transform:translateY(0)}
+.user-card:hover{transform:scale(1.1);box-shadow:0 4px 24px rgba(10,132,255,0.15)}
+.card-enter{opacity:0;transform:scale(0.5) translateY(20px)}
+.card-enter.active{opacity:1;transform:scale(1) translateY(0);transition:opacity .35s ease,transform .35s ease}
 .user-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .user-name{font-size:16px;font-weight:600}
 .user-meta{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-bottom:10px}
@@ -384,7 +384,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 </div>
 <div class="inbound-users" id="inbound-{{ inb.id }}">
 {% for u in inb_users %}
-<div class="user-card reveal" id="user-{{ u.uuid }}" data-name="{{ u.email|lower }}" data-traffic="{{ u.traffic_bytes }}" data-expiry="{{ u.expiry }}" data-status="{% if not u.enable %}3{% elif u.expired %}2{% else %}1{% endif %}">
+<div class="user-card" id="user-{{ u.uuid }}" data-name="{{ u.email|lower }}" data-traffic="{{ u.traffic_bytes }}" data-expiry="{{ u.expiry }}" data-status="{% if not u.enable %}3{% elif u.expired %}2{% else %}1{% endif %}">
 <div class="user-top">
 <div class="user-name">{{ u.email }} {% if not u.enable and u.expired %}<span class="badge i">Неактивен</span>{% elif not u.enable %}<span class="badge r">Выкл</span>{% elif u.expired %}<span class="badge o">Истёк</span>{% else %}<span class="badge g">Активен</span>{% endif %}</div>
 <label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" {% if u.enable %}checked{% endif %} onchange="toggleUser('{{ u.email }}',{{ u.inbound_id }},'{{ u.uuid }}',this.checked)"><span class="slider"></span></label>
@@ -463,7 +463,7 @@ var d=await api('/api/delete',{email:email,inbound_id:inbound_id,client_uuid:uui
 if(d.ok){toast(email+' удалён',true);var el=document.getElementById('user-'+uuid);if(el)el.remove();updateStats(d.stats)}
 else toast(d.msg||'Ошибка',false)}
 function addUserCard(u,inb){var g=document.getElementById('inbound-'+u.inbound_id);if(!g){location.reload();return}
-var h='<div class="user-card reveal" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
+var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
 h+='<div class="user-top"><div class="user-name">'+u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'))+'</div>';
 h+='<label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" '+(u.enable?'checked':'')+' onchange="toggleUser(this.dataset.email,this.dataset.iid,this.dataset.uid,this.checked)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'"><span class="slider"></span></label></div>';
 h+='<div class="user-meta"><span>'+u.traffic+'</span><span>'+u.expiry_str+'</span></div>';
@@ -471,15 +471,15 @@ h+='<div class="user-actions">';
 h+='<button class="btn" onclick="showLinks(this.dataset.email,this.dataset.vless,this.dataset.sub)" data-email="'+u.email+'" data-vless="'+u.vless_url+'" data-sub="'+u.sub_url+'">Ссылки</button>';
 h+='<button class="btn" onclick="showExtend(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">Продлить</button>';
 h+='<button class="btn btn-red" onclick="delUser(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">Удалить</button></div></div>';
-var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML('beforeend',h);var card=document.getElementById('user-'+u.uuid);if(card){card.classList.add('visible')}}
+var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML('beforeend',h);addUserCardReveal(document.getElementById('user-'+u.uuid))}
 function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
 el.dataset.expiry=u.expiry;el.dataset.status=u.enable?(u.expired?'2':'1'):'3';
 el.querySelector('.user-name').innerHTML=u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'));
 el.querySelector('.user-meta').innerHTML='<span>'+u.traffic+'</span><span>'+u.expiry_str+'</span>';
 var cb=el.querySelector('.toggle input');if(cb)cb.checked=u.enable}
 function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-active').textContent=s.active;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-inactive').textContent=s.inactive;document.getElementById('stat-traffic').textContent=s.traffic;}
-function initReveal(){var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}})},{threshold:0.1});document.querySelectorAll('.user-card.reveal').forEach(function(c){obs.observe(c)})}
-function addUserCardReveal(el){el.classList.add('reveal');requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add('visible')})})}
+function initReveal(){var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('active')}else{e.target.classList.remove('active')}})},{threshold:0.05});document.querySelectorAll('.user-card').forEach(function(c){c.classList.add('card-enter');obs.observe(c)});window._revealObs=obs}
+function addUserCardReveal(el){el.classList.add('card-enter');requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add('active')})});if(window._revealObs)window._revealObs.observe(el)}
 document.addEventListener('DOMContentLoaded',initReveal);
 </script></body></html>'''
 
