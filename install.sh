@@ -170,6 +170,10 @@ WorkingDirectory=${INSTALL_DIR}
 Environment="XPANEL_USER=${PANEL_USER}"
 Environment="XPANEL_PASS=${INPUT_PASS}"
 Environment="XPANEL_PORT=${FLASK_PORT}"
+Environment="XPANEL_DOMAIN=${PANEL_DOMAIN}"
+Environment="XPANEL_SECRET=${SECRET_PATH}"
+Environment="XUI_BASE_URL=${XUI_URL}"
+Environment="XUI_API_TOKEN=${XUI_TOKEN}"
 ExecStart=/usr/bin/python3 ${INSTALL_DIR}/app.py
 Restart=on-failure
 RestartSec=5

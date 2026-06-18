@@ -71,8 +71,24 @@ XUI_HDR = {"Authorization": f"Bearer {XUI['token']}"} if XUI["token"] else {}
 PANEL_USER = os.environ.get("XPANEL_USER", "admin")
 PANEL_PASS_HASH = hashlib.sha256(os.environ.get("XPANEL_PASS", "admin123").encode()).hexdigest()
 FLASK_PORT = int(os.environ.get("XPANEL_PORT", "8889"))
-PANEL_DOMAIN = os.environ.get("XPANEL_DOMAIN", XUI.get("domain", ""))
+PANEL_DOMAIN = os.environ.get("XPANEL_DOMAIN", "")
 SECRET_PATH = os.environ.get("XPANEL_SECRET", "")
+
+# 3x-ui connection (from environment or auto-detect)
+XUI_BASE = os.environ.get("XUI_BASE_URL", "")
+XUI_TOKEN = os.environ.get("XUI_API_TOKEN", "")
+
+if not XUI_BASE:
+    XUI = detect_xui()
+    XUI_BASE = XUI["base_url"]
+    XUI_TOKEN = XUI["token"]
+    if not PANEL_DOMAIN:
+        PANEL_DOMAIN = XUI.get("domain", "")
+elif not XUI_TOKEN:
+    XUI = detect_xui()
+    XUI_TOKEN = XUI.get("token", "")
+
+XUI_HDR = {"Authorization": f"Bearer {XUI_TOKEN}"} if XUI_TOKEN else {}
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("XPANEL_SECRET_KEY", secrets.token_hex(32))
