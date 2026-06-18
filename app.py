@@ -191,9 +191,23 @@ def build_link(client_uuid, client_email, inb):
     return ""
 
 
+def detect_sub_config():
+    sub_port, sub_path = 2096, "/sub/"
+    try:
+        import sqlite3
+        conn = sqlite3.connect("/etc/x-ui/x-ui.db")
+        for row in conn.execute("SELECT key, value FROM settings WHERE key IN ('subPort', 'subPath')"):
+            if row[0] == "subPort": sub_port = int(row[1])
+            if row[0] == "subPath": sub_path = row[1]
+        conn.close()
+    except Exception:
+        pass
+    return sub_port, sub_path
+
+
 def build_sub_url(sub_id):
-    sub_port = XUI["port"]
-    return f"https://{PANEL_DOMAIN}:{sub_port}/sub/{sub_id}"
+    sub_port, sub_path = detect_sub_config()
+    return f"https://{PANEL_DOMAIN}:{sub_port}{sub_path}{sub_id}"
 
 
 def _get_stats():
