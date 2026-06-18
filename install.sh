@@ -247,6 +247,13 @@ SVCEOF
 
     systemctl daemon-reload
     systemctl enable xray-panel >/dev/null 2>&1
+
+    # Verify service file has all required env vars
+    if ! grep -q 'XUI_BASE_URL=' /etc/systemd/system/xray-panel.service || \
+       ! grep -q 'XUI_API_TOKEN=' /etc/systemd/system/xray-panel.service; then
+        err "Service file missing XUI env vars!"
+        exit 1
+    fi
     log "Systemd сервис создан"
 }
 
