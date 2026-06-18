@@ -444,6 +444,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 <div class="fa"><button type="button" class="btn btn-cancel btn-full" onclick="hideModal('m-links')">Закрыть</button></div>
 </div></div>
 
+<div class="modal-bg" id="m-welcome" onclick="if(event.target===this)hideModal('m-welcome')">
+<div class="modal"><span class="modal-handle"></span><h3>Пользователь создан</h3>
+<div style="font-size:13px;line-height:1.7;color:var(--text);margin-bottom:16px" id="welcome-text">
+<b>Настройка VPN</b><br><br>
+1. Скачай приложение <b>v2raytun</b> (AppStore)<br>
+<small style="color:var(--muted)">Недоступно в российском AppStore — смени регион на Турцию или США</small><br><br>
+2. Скопируй ссылку подписки:<br>
+<div class="sub-url" style="margin:8px 0;cursor:pointer" onclick="copyEl(this)" id="welcome-sub">https://guardport.ru:2096/c3Vic2NpcHRpb24=/l8azhenj7a1kvjjh</div>
+<br>
+3. Открой v2raytun и нажми <b>«Добавить из буфера»</b><br>
+4. Перейди в <b>Настройки</b> → <b>Правила трафика</b><br>
+5. <b>Правила от сообщества</b> → выбери <b>«.RU без VPN»</b><br>
+6. Нажми <b>«Установить»</b> → <b>«Включить функцию»</b><br>
+7. Вернись на главный экран и нажми кнопку подключения<br>
+8. Разрешить добавление конфигурации VPN<br><br>
+<b>Оплата:</b><br>
+79502435734 (Тинькофф)<br>
+Олег С. — 100₽/мес
+</div>
+<div class="fa"><button type="button" class="btn btn-primary btn-full" onclick="copyWelcome()">Скопировать инструкцию</button></div>
+<div class="fa" style="margin-top:8px"><button type="button" class="btn btn-cancel btn-full" onclick="hideModal('m-welcome')">Закрыть</button></div>
+</div></div>
+
 <script>
 var BP="{{ basepath }}";
 function showModal(id){document.getElementById(id).classList.add('on')}
@@ -456,6 +479,7 @@ function syncDateFromDays(){var d=parseInt(document.getElementById('ext-days').v
 function syncDaysFromDate(){var ds=document.getElementById('ext-date').value;if(!ds)return;var diff=Math.ceil((new Date(ds)-new Date())/(86400000));if(diff>0)document.getElementById('ext-days').value=diff}
 function showLinks(e,v,s){document.getElementById('links-user').textContent=e;document.getElementById('link-vless').textContent=v;document.getElementById('link-sub').textContent=s;showModal('m-links')}
 function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{toast('Скопировано',true)})}
+function copyWelcome(){var t='Настройка VPN\n\n1. Скачай v2raytun (AppStore)\n   Недоступен в российском AppStore — смени регион\n\n2. Скопируй ссылку:\nhttps://guardport.ru:2096/c3Vic2NpcHRpb24=/l8azhenj7a1kvjjh\n\n3. Открой v2raytun → «Добавить из буфера»\n4. Настройки → Правила трафика → Правила от сообщества\n5. Выбери «.RU без VPN» → Установить → Включить функцию\n6. Вернись на главный экран → кнопка подключения\n7. Разрешить VPN\n\nОплата: 79502435734 (Тинькофф) Олег С. 100₽/мес';navigator.clipboard.writeText(t).then(()=>{toast('Инструкция скопирована',true)})}
 function toggleInbound(id){var el=document.getElementById('inbound-'+id);var hdr=el.previousElementSibling;el.classList.toggle('hidden');hdr.classList.toggle('collapsed')}
 function filterUsers(){var q=document.getElementById('searchInput').value.toLowerCase();document.querySelectorAll('.user-card').forEach(c=>{c.style.display=c.dataset.name.includes(q)?'':'none'})}
 function sortUsers(){var s=document.getElementById('sortBy').value;document.querySelectorAll('.inbound-users').forEach(g=>{var cards=Array.from(g.querySelectorAll('.user-card'));cards.sort((a,b)=>{if(s==='name')return a.dataset.name.localeCompare(b.dataset.name);if(s==='name-desc')return b.dataset.name.localeCompare(a.dataset.name);if(s==='traffic')return parseInt(b.dataset.traffic)-parseInt(a.dataset.traffic);if(s==='expiry')return parseInt(a.dataset.expiry)-parseInt(b.dataset.expiry);if(s==='status')return parseInt(a.dataset.status)-parseInt(b.dataset.status);return 0});cards.forEach(c=>g.appendChild(c))})}
@@ -464,7 +488,7 @@ async function doAdd(){
 var btn=document.getElementById('btn-add');btn.classList.add('btn-load');btn.textContent='Создание...';
 var d=await api('/api/add',{email:document.getElementById('add-email').value,days:parseInt(document.getElementById('add-days').value),inbound_id:parseInt(document.getElementById('add-inbound').value)});
 btn.classList.remove('btn-load');btn.textContent='Создать';
-if(d.ok){hideModal('m-add');toast(d.user.email+' создан',true);addUserCard(d.user,d.inbound);document.getElementById('add-email').value='';updateStats(d.stats)}
+if(d.ok){hideModal('m-add');toast(d.user.email+' создан',true);addUserCard(d.user,d.inbound);document.getElementById('add-email').value='';updateStats(d.stats);showModal('m-welcome')}
 else toast(d.msg||'Ошибка',false)}
 async function doExtend(){
 var btn=document.getElementById('btn-ext');btn.classList.add('btn-load');btn.textContent='Продление...';
