@@ -36,6 +36,7 @@ cleanup() {
             rm -f /etc/systemd/system/xray-panel.service
             systemctl daemon-reload 2>/dev/null || true
             rm -rf /opt/xray-panel
+            rm -f /usr/local/bin/xray-panel
             rm -f /etc/nginx/sites-enabled/xray-panel
             systemctl reload nginx 2>/dev/null || true
             log "Старая установка удалена"
@@ -195,6 +196,17 @@ install_panel() {
     fi
     log "app.py скопирован"
 
+    # Install CLI tool
+    if [ -f "${SCRIPT_DIR}/xray-panel" ]; then
+        cp "${SCRIPT_DIR}/xray-panel" /usr/local/bin/xray-panel
+        chmod +x /usr/local/bin/xray-panel
+        log "CLI: xray-panel установлен"
+    elif [ -f "${SCRIPT_DIR}/xray-panel/xray-panel" ]; then
+        cp "${SCRIPT_DIR}/xray-panel/xray-panel" /usr/local/bin/xray-panel
+        chmod +x /usr/local/bin/xray-panel
+        log "CLI: xray-panel установлен"
+    fi
+
     # Verify app.py is complete (must contain app.run)
     if ! grep -q "app.run" "${INSTALL_DIR}/app.py"; then
         err "app.py повреждён (нет app.run)"
@@ -345,6 +357,7 @@ print_result() {
     echo -e "${YELLOW}  Сохраните эти данные!${NC}"
     echo ""
     echo "  Управление:"
+    echo "    xray-panel info        — данные для входа"
     echo "    systemctl restart xray-panel"
     echo "    systemctl status xray-panel"
     echo "    journalctl -u xray-panel -f"
