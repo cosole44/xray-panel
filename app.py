@@ -78,7 +78,6 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("XPANEL_SECRET_KEY", secrets.token_hex(32))
 
 # Build base URL for redirects
-SECRET_PATH = os.environ.get("XPANEL_SECRET", "")
 BASE_URL = f"/{SECRET_PATH}" if SECRET_PATH else ""
 
 
