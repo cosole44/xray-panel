@@ -1,0 +1,8 @@
+#!/bin/bash
+ SVC="/etc/systemd/system/xray-panel.service"
+ [ -f "$SVC" ] || { echo "xray-panel not installed"; exit 1; }
+ get(){ grep -oP "Environment=\"${1}=\K[^\"]*" "$SVC"; }
+ U=$(get XPANEL_USER); P=$(get XPANEL_PASS); D=$(get XPANEL_DOMAIN); S=$(get XPANEL_SECRET)
+ echo "Panel:    https://${D}:8888/${S}/"
+ echo "Login:    ${U}"
+ echo "Password: ${P}"
