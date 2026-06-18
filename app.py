@@ -307,6 +307,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
 .badge.g{background:rgba(34,197,94,0.12);color:var(--green)}.badge.r{background:rgba(239,68,68,0.12);color:var(--red)}
 .badge.o{background:rgba(245,158,11,0.12);color:var(--orange)}.badge.i{background:rgba(148,163,184,0.15);color:#94a3b8}
+.toggle{position:relative;width:40px;height:22px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{position:absolute;inset:0;background:rgba(239,68,68,0.3);border-radius:22px;transition:.3s}
+.toggle .slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.toggle input:checked+.slider{background:rgba(34,197,94,0.5)}
+.toggle input:checked+.slider::before{transform:translateX(18px)}
 .user-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;min-height:40px}
 .btn:active{transform:scale(0.97)}
@@ -405,6 +411,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="user-actions">
 <button class="btn btn-p" style="flex:1" onclick="showLinks('{{ u.email }}','{{ u.vless_url|e }}','{{ u.sub_url|e }}')">&#128279; Links</button>
 <button class="btn btn-s" style="flex:1" onclick="showExtend('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">&#128197; Extend</button>
+<label class="toggle" onclick="event.stopPropagation()" title="Enable/Disable"><input type="checkbox" {% if u.enable %}checked{% endif %} onchange="toggleUser('{{ u.email }}',{{ u.inbound_id }},'{{ u.uuid }}',this.checked)"><span class="slider"></span></label>
 <button class="btn btn-d" onclick="delUser('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">&#128465;</button>
 </div></div>
 {% endfor %}
@@ -424,9 +431,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="modal-bg" id="m-ext" onclick="if(event.target===this)hideModal('m-ext')">
 <div class="modal"><span class="modal-handle"></span><h3>&#128197; Extend</h3>
 <input type="hidden" id="ext-email"><input type="hidden" id="ext-inbound"><input type="hidden" id="ext-uuid">
-<div class="fg"><label>Mode</label><select id="ext-mode" onchange="toggleExtMode()"><option value="days">Add days</option><option value="date">Set date</option></select></div>
-<div class="fg" id="ext-days-wrap"><label>Days to add</label><input type="number" id="ext-days" value="30" min="1"></div>
-<div class="fg" id="ext-date-wrap" style="display:none"><label>New expiry date</label><input type="date" id="ext-date"></div>
+<div class="fg"><label>Days to add</label><input type="number" id="ext-days" value="30" min="1" oninput="syncDateFromDays()"></div>
+<div class="fg"><label>New expiry date</label><input type="date" id="ext-date" oninput="syncDaysFromDate()"></div>
 <div class="fa"><button type="button" class="btn btn-g" onclick="hideModal('m-ext')">Cancel</button><button type="button" class="btn btn-s btn-xl" id="btn-ext" onclick="doExtend()">Extend</button></div>
 </div></div>
 
@@ -443,8 +449,11 @@ var BP="{{ basepath }}";
 function showModal(id){document.getElementById(id).classList.add('on')}
 function hideModal(id){document.getElementById(id).classList.remove('on')}
 function toast(msg,ok){var t=document.createElement('div');t.className='toast '+(ok?'ok':'er');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
-function showExtend(e,i,u){document.getElementById('ext-email').value=e;document.getElementById('ext-inbound').value=i;document.getElementById('ext-uuid').value=u;document.getElementById('ext-mode').value='days';toggleExtMode();showModal('m-ext')}
-function toggleExtMode(){var m=document.getElementById('ext-mode').value;document.getElementById('ext-days-wrap').style.display=m==='days'?'':'none';document.getElementById('ext-date-wrap').style.display=m==='date'?'':'none'}
+function showExtend(e,i,u){document.getElementById('ext-email').value=e;document.getElementById('ext-inbound').value=i;document.getElementById('ext-uuid').value=u;
+var now=new Date();var exp=new Date(now.getTime()+30*86400000);
+document.getElementById('ext-days').value=30;document.getElementById('ext-date').value=exp.toISOString().split('T')[0];showModal('m-ext')}
+function syncDateFromDays(){var d=parseInt(document.getElementById('ext-days').value)||0;var now=new Date();now.setDate(now.getDate()+d);document.getElementById('ext-date').value=now.toISOString().split('T')[0]}
+function syncDaysFromDate(){var ds=document.getElementById('ext-date').value;if(!ds)return;var diff=Math.ceil((new Date(ds)-new Date())/(86400000));if(diff>0)document.getElementById('ext-days').value=diff}
 function showLinks(e,v,s){document.getElementById('links-user').textContent=e;document.getElementById('link-vless').textContent=v;document.getElementById('link-sub').textContent=s;showModal('m-links')}
 function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{toast('Copied!',true)})}
 function toggleInbound(id){var el=document.getElementById('inbound-'+id);var hdr=el.previousElementSibling;el.classList.toggle('hidden');hdr.classList.toggle('collapsed')}
@@ -459,10 +468,7 @@ if(d.ok){hideModal('m-add');toast('User '+d.user.email+' created',true);addUserC
 else toast(d.msg||'Error',false)}
 async function doExtend(){
 var btn=document.getElementById('btn-ext');btn.classList.add('btn-load');btn.textContent='Extending...';
-var mode=document.getElementById('ext-mode').value;
-var body={email:document.getElementById('ext-email').value,inbound_id:parseInt(document.getElementById('ext-inbound').value),client_uuid:document.getElementById('ext-uuid').value};
-if(mode==='date'){body.expiry_date=document.getElementById('ext-date').value}else{body.days=parseInt(document.getElementById('ext-days').value)}
-var d=await api('/api/extend',body);
+var d=await api('/api/extend',{email:document.getElementById('ext-email').value,inbound_id:parseInt(document.getElementById('ext-inbound').value),client_uuid:document.getElementById('ext-uuid').value,days:parseInt(document.getElementById('ext-days').value),expiry_date:document.getElementById('ext-date').value});
 btn.classList.remove('btn-load');btn.textContent='Extend';
 if(d.ok){hideModal('m-ext');toast(d.user.email+' extended to '+d.user.expiry_str,true);updateUserCard(d.user)}
 else toast(d.msg||'Error',false)}
@@ -471,6 +477,10 @@ if(!confirm('Delete '+email+'?'))return;
 var d=await api('/api/delete',{email:email,inbound_id:inbound_id,client_uuid:uuid});
 if(d.ok){toast('User '+email+' deleted',true);var el=document.getElementById('user-'+uuid);if(el)el.remove();updateStats(d.stats)}
 else toast(d.msg||'Error',false)}
+async function toggleUser(email,inbound_id,uuid,enable){
+var d=await api('/api/toggle',{email:email,inbound_id:inbound_id,client_uuid:uuid,enable:enable});
+if(d.ok){updateUserCard(d.user);updateStats(d.stats);toast(email+(enable?' enabled':' disabled'),true)}
+else{toast(d.msg||'Error',false);location.reload()}}
 function addUserCard(u,inb){var g=document.getElementById('inbound-'+u.inbound_id);if(!g){location.reload();return}
 var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
 h+='<div class="user-top"><div class="user-name">'+u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):(u.expired?'<span class="badge i">Inactive</span>':'<span class="badge r">Off</span>'))+'</div></div>';
@@ -478,12 +488,14 @@ h+='<div class="user-meta"><span>&#128190; '+u.traffic+'</span><span>&#128197; '
 h+='<div class="user-actions">';
 h+='<button class="btn btn-p" style="flex:1" onclick="showLinks(this.dataset.email,this.dataset.vless,this.dataset.sub)" data-email="'+u.email+'" data-vless="'+u.vless_url+'" data-sub="'+u.sub_url+'">&#128279; Links</button>';
 h+='<button class="btn btn-s" style="flex:1" onclick="showExtend(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">&#128197; Extend</button>';
+h+='<label class="toggle" onclick="event.stopPropagation()" title="Enable/Disable"><input type="checkbox" '+(u.enable?'checked':'')+' onchange="toggleUser(this.dataset.email,this.dataset.iid,this.dataset.uid,this.checked)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'"><span class="slider"></span></label>';
 h+='<button class="btn btn-d" onclick="delUser(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">&#128465;</button></div></div>';
 var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML('beforeend',h)}
 function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
 el.dataset.expiry=u.expiry;el.dataset.status=u.enable?(u.expired?'2':'1'):'3';
 el.querySelector('.user-name').innerHTML=u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):(u.expired?'<span class="badge i">Inactive</span>':'<span class="badge r">Off</span>'));
-el.querySelector('.user-meta').innerHTML='<span>&#128190; '+u.traffic+'</span><span>&#128197; '+u.expiry_str+'</span>'}
+el.querySelector('.user-meta').innerHTML='<span>&#128190; '+u.traffic+'</span><span>&#128197; '+u.expiry_str+'</span>';
+var cb=el.querySelector('.toggle input');if(cb)cb.checked=u.enable}
 function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-active').textContent=s.active;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-inactive').textContent=s.inactive;document.getElementById('stat-traffic').textContent=s.traffic;
 var inbCounts={};s.users.forEach(u=>{inbCounts[u.inbound_id]=(inbCounts[u.inbound_id]||0)+1});
 Object.keys(inbCounts).forEach(id=>{var el=document.getElementById('count-'+id);if(el)el.textContent=inbCounts[id]})}
@@ -631,6 +643,38 @@ def api_extend():
                 new_exp = (cur_exp + days * 86400 * 1000) if cur_exp > now_ms else (now_ms + days * 86400 * 1000)
             c["expiryTime"] = new_exp
             c["enable"] = True
+            c["updated_at"] = now_ms
+            found = c
+            break
+    if not found:
+        return jsonify({"ok": False, "msg": "Client not found"})
+    inb["settings"] = settings
+    result = update_full_inbound(inb)
+    if not result.get("success"):
+        return jsonify({"ok": False, "msg": result.get("msg", "Unknown error")})
+    stats = _get_stats()
+    user_stats = next((u for u in stats["users"] if u["email"] == email), None)
+    return jsonify({"ok": True, "user": user_stats, "stats": stats})
+
+
+@app.route("/api/toggle", methods=["POST"])
+@login_required
+def api_toggle():
+    d = request.get_json()
+    email = d.get("email", "")
+    inb_id = int(d.get("inbound_id", 1))
+    cid = d.get("client_uuid", "")
+    enable = d.get("enable", True)
+    inb = get_full_inbound(inb_id)
+    if not inb:
+        return jsonify({"ok": False, "msg": "Inbound not found"})
+    settings = inb.get("settings", {})
+    if isinstance(settings, str): settings = json.loads(settings)
+    now_ms = int(time.time() * 1000)
+    found = None
+    for c in settings.get("clients", []):
+        if c.get("id") == cid or c.get("email") == email:
+            c["enable"] = enable
             c["updated_at"] = now_ms
             found = c
             break
