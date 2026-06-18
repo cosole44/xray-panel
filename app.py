@@ -301,7 +301,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="header">
 <h1><span>&#9889;</span> Xray</h1>
 <div class="hdr-right">
-<a href="/logout" class="btn btn-g" style="font-size:12px;padding:8px 12px">Exit</a>
+<a href="{{ basepath }}/logout" class="btn btn-g" style="font-size:12px;padding:8px 12px">Exit</a>
 </div></div>
 <div class="container">
 {% if flash_msg %}<div class="flash {{ flash_type }}">{{ flash_msg }}</div>{% endif %}
@@ -333,7 +333,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="modal-bg" id="m-add" onclick="if(event.target===this)hideModal('m-add')">
 <div class="modal"><span class="modal-handle"></span><h3>&#10133; New User</h3>
-<form method="POST" action="/add">
+<form method="POST" action="{{ basepath }}/add">
 <div class="fg"><label>Name</label><input type="text" name="email" required placeholder="e.g. john"></div>
 <div class="fg"><label>Expiry (days)</label><input type="number" name="expiry_days" value="30" min="1"></div>
 <div class="fg"><label>Traffic Limit (GB, 0=unlimited)</label><input type="number" name="total_gb" value="0" min="0"></div>
@@ -343,7 +343,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="modal-bg" id="m-ext" onclick="if(event.target===this)hideModal('m-ext')">
 <div class="modal"><span class="modal-handle"></span><h3>&#128197; Extend</h3>
-<form method="POST" action="/extend">
+<form method="POST" action="{{ basepath }}/extend">
 <input type="hidden" name="email" id="ext-email"><input type="hidden" name="inbound_id" id="ext-inbound"><input type="hidden" name="client_uuid" id="ext-uuid">
 <div class="fg"><label>Days to add</label><input type="number" name="days" value="30" min="1"></div>
 <div class="fa"><button type="button" class="btn btn-g" onclick="hideModal('m-ext')">Cancel</button><button type="submit" class="btn btn-s btn-xl">Extend</button></div>
@@ -357,7 +357,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="fa"><button type="button" class="btn btn-g btn-full" onclick="hideModal('m-links')">Close</button></div>
 </div></div>
 
-<form method="POST" action="/delete" id="del-form" style="display:none"><input type="hidden" name="email" id="del-email"><input type="hidden" name="inbound_id" id="del-inbound"></form>
+<form method="POST" action="{{ basepath }}/delete" id="del-form" style="display:none"><input type="hidden" name="email" id="del-email"><input type="hidden" name="inbound_id" id="del-inbound"></form>
 
 <script>
 function showModal(id){document.getElementById(id).classList.add('on')}
@@ -434,7 +434,8 @@ def dashboard():
     flash_type = request.args.get("ftype", "ok")
     return render_template_string(DASHBOARD_PAGE,
         users=users, inbounds=inbounds, active=active, expired=expired,
-        total_tr=fmt_bytes(total_bytes), flash_msg=flash_msg, flash_type=flash_type)
+        total_tr=fmt_bytes(total_bytes), flash_msg=flash_msg, flash_type=flash_type,
+        basepath=BASEPATH)
 
 
 @app.route("/add", methods=["POST"])
