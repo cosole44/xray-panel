@@ -4,8 +4,6 @@
 # Лёгкая панель управления пользователями Xray для 3x-ui
 # https://github.com/cosole44/xray-panel
 # ============================================================
-set -e
-
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 
 print_banner() {
@@ -137,8 +135,8 @@ interactive_config() {
 install_deps() {
     echo ""
     echo -e "${BLUE}── Установка зависимостей ──${NC}"
-    apt-get update -qq >/dev/null 2>&1
-    apt-get install -y -qq python3 python3-flask python3-requests nginx >/dev/null 2>&1
+    apt-get update -qq 2>&1 | tail -3
+    apt-get install -y -qq python3 python3-flask python3-requests nginx 2>&1 | tail -5
     log "Зависимости установлены"
 }
 
@@ -280,8 +278,11 @@ print_banner
 detect_xui
 detect_domain
 interactive_config
-install_deps
-install_panel
-configure_nginx
-start_panel
+
+echo ""
+echo -e "${BLUE}── Установка ──${NC}"
+install_deps || { err "Ошибка установки зависимостей"; exit 1; }
+install_panel || { err "Ошибка установки панели"; exit 1; }
+configure_nginx || { warn "Ошибка nginx (не критично)"; }
+start_panel || { err "Ошибка запуска панели"; exit 1; }
 print_result
