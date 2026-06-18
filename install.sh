@@ -257,7 +257,7 @@ print_result() {
     echo -e "${GREEN}  ⚡ Xray Panel установлен!${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
     echo ""
-    echo "  URL:    https://${PANEL_DOMAIN}:${SSL_PORT}${SECRET_PATH}"
+    echo "  URL:    https://${PANEL_DOMAIN}:${SSL_PORT}/${SECRET_PATH}"
     echo "  Логин:  ${PANEL_USER}"
     echo "  Пароль: ${INPUT_PASS}"
     echo ""
@@ -275,6 +275,25 @@ print_result() {
 
 # --- Main ---
 print_banner
+
+# Cleanup old installation if exists
+if systemctl is-enabled xray-panel 2>/dev/null || systemctl is-active xray-panel 2>/dev/null; then
+    echo ""
+    warn "Обнаружена предыдущая установка Xray Panel"
+    read -rp "Удалить и переустановить? [Y/n]: " CLEANUP
+    if [ "${CLEANUP,,}" != "n" ]; then
+        echo ""
+        echo -e "${BLUE}── Удаление старой установки ──${NC}"
+        systemctl stop xray-panel 2>/dev/null || true
+        systemctl disable xray-panel 2>/dev/null || true
+        rm -f /etc/systemd/system/xray-panel.service
+        systemctl daemon-reload 2>/dev/null || true
+        rm -rf /opt/xray-panel
+        rm -f /etc/nginx/sites-enabled/xray-panel
+        systemctl reload nginx 2>/dev/null || true
+        log "Старая установка удалена"
+    fi
+fi
 detect_xui
 detect_domain
 interactive_config

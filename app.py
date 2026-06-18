@@ -77,6 +77,10 @@ SECRET_PATH = os.environ.get("XPANEL_SECRET", "")
 app = Flask(__name__)
 app.secret_key = os.environ.get("XPANEL_SECRET_KEY", secrets.token_hex(32))
 
+# Build base URL for redirects
+SECRET_PATH = os.environ.get("XPANEL_SECRET", "")
+BASE_URL = f"/{SECRET_PATH}" if SECRET_PATH else ""
+
 
 # ============================================================
 # Helpers
@@ -85,7 +89,7 @@ def login_required(f):
     @wraps(f)
     def d(*args, **kwargs):
         if not session.get("auth"):
-            return redirect(url_for("login"))
+            return redirect(f"{BASE_URL}/login")
         return f(*args, **kwargs)
     return d
 
@@ -351,7 +355,7 @@ def login():
         if (request.form.get("username") == PANEL_USER and
                 hashlib.sha256(request.form.get("password", "").encode()).hexdigest() == PANEL_PASS_HASH):
             session["auth"] = True
-            return redirect(url_for("dashboard"))
+            return redirect(f"{BASE_URL}/")
         error = "Wrong credentials"
     return render_template_string(LOGIN_PAGE, error=error)
 
@@ -359,7 +363,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login"))
+    return redirect(f"{BASE_URL}/login")
 
 
 @app.route("/")
@@ -417,10 +421,10 @@ def add_user():
     days = int(request.form.get("expiry_days", 30))
     total_gb = int(request.form.get("total_gb", 0))
     if not email:
-        return redirect(url_for("dashboard", flash="Name required", ftype="er"))
+        return redirect(f"{BASE_URL}/?flash=Name+required&ftype=er")
     inb = get_full_inbound(inb_id)
     if not inb:
-        return redirect(url_for("dashboard", flash="Inbound not found", ftype="er"))
+        return redirect(f"{BASE_URL}/?flash=Inbound+not+found&ftype=er")
     settings = inb.get("settings", {})
     if isinstance(settings, str):
         settings = json.loads(settings)
@@ -435,8 +439,8 @@ def add_user():
     inb["settings"] = settings
     result = update_full_inbound(inb)
     if result.get("success"):
-        return redirect(url_for("dashboard", flash=f"User {email} created", ftype="ok"))
-    return redirect(url_for("dashboard", flash=f"Error: {result.get('msg', 'Unknown')}", ftype="er"))
+        return redirect(f"{BASE_URL}/?flash=User+{email}+created&ftype=ok")
+    return redirect(f"{BASE_URL}/?flash=Error:+{result.get('msg', 'Unknown')}&ftype=er")
 
 
 @app.route("/extend", methods=["POST"])
@@ -448,7 +452,7 @@ def extend_user():
     days = int(request.form.get("days", 30))
     inb = get_full_inbound(inb_id)
     if not inb:
-        return redirect(url_for("dashboard", flash="Inbound not found", ftype="er"))
+        return redirect(f"{BASE_URL}/?flash=Inbound+not+found&ftype=er")
     settings = inb.get("settings", {})
     if isinstance(settings, str):
         settings = json.loads(settings)
@@ -462,13 +466,13 @@ def extend_user():
             found_client = c
             break
     if not found_client:
-        return redirect(url_for("dashboard", flash="Client not found", ftype="er"))
+        return redirect(f"{BASE_URL}/?flash=Client+not+found&ftype=er")
     inb["settings"] = settings
     result = update_full_inbound(inb)
     if result.get("success"):
         new_date = datetime.fromtimestamp(found_client["expiryTime"] / 1000).strftime("%d.%m.%Y")
-        return redirect(url_for("dashboard", flash=f"{email} extended to {new_date}", ftype="ok"))
-    return redirect(url_for("dashboard", flash=f"Error: {result.get('msg', 'Unknown')}", ftype="er"))
+        return redirect(f"{BASE_URL}/?flash={email}+extended+to+{new_date}&ftype=ok")
+    return redirect(f"{BASE_URL}/?flash=Error:+{result.get('msg', 'Unknown')}&ftype=er")
 
 
 @app.route("/delete", methods=["POST"])
@@ -478,7 +482,7 @@ def delete_user():
     inb_id = int(request.form.get("inbound_id", 1))
     inb = get_full_inbound(inb_id)
     if not inb:
-        return redirect(url_for("dashboard", flash="Inbound not found", ftype="er"))
+        return redirect(f"{BASE_URL}/?flash=Inbound+not+found&ftype=er")
     settings = inb.get("settings", {})
     if isinstance(settings, str):
         settings = json.loads(settings)
@@ -486,8 +490,8 @@ def delete_user():
     inb["settings"] = settings
     result = update_full_inbound(inb)
     if result.get("success"):
-        return redirect(url_for("dashboard", flash=f"User {email} deleted", ftype="ok"))
-    return redirect(url_for("dashboard", flash=f"Error: {result.get('msg', 'Unknown')}", ftype="er"))
+        return redirect(f"{BASE_URL}/?flash=User+{email}+deleted&ftype=ok")
+    return redirect(f"{BASE_URL}/?flash=Error:+{result.get('msg', 'Unknown')}&ftype=er")
 
 
 # ============================================================
