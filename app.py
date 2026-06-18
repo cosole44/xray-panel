@@ -304,6 +304,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .stat{background:var(--card);border-radius:var(--radius);padding:14px 10px;text-align:center}
 .stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
 .stat .value{font-size:22px;font-weight:700}
+.stat:active{transform:scale(0.95)}
 .stat .value.g{color:var(--green)}.stat .value.b{color:var(--blue)}.stat .value.p{color:#bf5af2}.stat .value.r{color:var(--red)}.stat .value.y{color:var(--yellow)}
 .add-btn{width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius);font-size:16px;font-weight:600;cursor:pointer;transition:all .15s;margin-bottom:20px}
 .add-btn:active{transform:scale(0.98);opacity:0.8}
@@ -379,7 +380,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 <div class="container">
 <div class="stats">
 <div class="stat"><div class="label">Всего</div><div class="value b" id="stat-total">{{ users|length }}</div></div>
-<div class="stat"><div class="label">Онлайн</div><div class="value g" id="stat-online">0</div></div>
+<div class="stat" onclick="pollOnline()" style="cursor:pointer"><div class="label">Онлайн</div><div class="value g" id="stat-online">0</div></div>
 <div class="stat"><div class="label">Истёкшие</div><div class="value r" id="stat-expired">{{ expired }}</div></div>
 <div class="stat"><div class="label">Трафик</div><div class="value y" id="stat-traffic">{{ total_tr }}</div></div>
 </div>
@@ -408,7 +409,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 <div class="user-name">{{ u.email }} {% if not u.enable and u.expired %}<span class="badge i">Неактивен</span>{% elif not u.enable %}<span class="badge r">Выкл</span>{% elif u.expired %}<span class="badge o">Истёк</span>{% else %}<span class="badge g">Активен</span>{% endif %}</div>
 <label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" {% if u.enable %}checked{% endif %} onchange="toggleUser('{{ u.email }}',{{ u.inbound_id }},'{{ u.uuid }}',this.checked)"><span class="slider"></span></label>
 </div>
-<div class="user-meta"><span>{{ u.traffic }}</span><span class="{% if u.days_left <= 1 %}c-red{% elif u.days_left <= 5 %}c-yellow{% else %}c-green{% endif %}">{{ u.days_left }} дн.</span></div>
+<div class="user-meta"><span>{{ u.traffic }}</span><span class="{% if u.days_left <= 1 %}c-red{% elif u.days_left <= 5 %}c-yellow{% else %}c-green{% endif %}">{% if u.days_left >= 9999 %}∞{% else %}{{ u.days_left }} дн.{% endif %}</span></div>
 <div class="user-actions">
 <button class="btn" onclick="showLinks('{{ u.email }}','{{ u.vless_url|e }}','{{ u.sub_url|e }}')">Ссылки</button>
 <button class="btn" onclick="showExtend('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">Продлить</button>
@@ -484,7 +485,7 @@ function addUserCard(u,inb){var g=document.getElementById('inbound-'+u.inbound_i
 var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
 h+='<div class="user-top"><div class="user-name">'+u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'))+'</div>';
 h+='<label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" '+(u.enable?'checked':'')+' onchange="toggleUser(this.dataset.email,this.dataset.iid,this.dataset.uid,this.checked)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'"><span class="slider"></span></label></div>';
-h+='<div class="user-meta"><span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+u.days_left+' дн.</span></div>';
+h+='<div class="user-meta"><span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+(u.days_left>=9999?'∞':u.days_left+' дн.')+'</span></div>';
 h+='<div class="user-actions">';
 h+='<button class="btn" onclick="showLinks(this.dataset.email,this.dataset.vless,this.dataset.sub)" data-email="'+u.email+'" data-vless="'+u.vless_url+'" data-sub="'+u.sub_url+'">Ссылки</button>';
 h+='<button class="btn" onclick="showExtend(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">Продлить</button>';
@@ -493,7 +494,7 @@ var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML
 function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
 el.dataset.expiry=u.expiry;el.dataset.status=u.enable?(u.expired?'2':'1'):'3';
 el.querySelector('.user-name').innerHTML=u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'));
-el.querySelector('.user-meta').innerHTML='<span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+u.days_left+' дн.</span>';
+el.querySelector('.user-meta').innerHTML='<span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+(u.days_left>=9999?'∞':u.days_left+' дн.')+'</span>';
 var cb=el.querySelector('.toggle input');if(cb)cb.checked=u.enable}
 function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-traffic').textContent=s.traffic;}
 function initReveal(){var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('active')}else{e.target.classList.remove('active')}})},{threshold:0.05});document.querySelectorAll('.user-card').forEach(function(c){c.classList.add('card-enter');obs.observe(c)});window._revealObs=obs}
