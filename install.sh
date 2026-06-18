@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Xray Panel — Установщик
+# Xray Panel — Установщик / Обновлятор
 # Лёгкая панель управления пользователями Xray для 3x-ui
 # https://github.com/cosole44/xray-panel
 # ============================================================
@@ -10,7 +10,7 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC
 print_banner() {
     echo -e "${BLUE}"
     echo "  ╔══════════════════════════════════════╗"
-    echo "  ║       ⚡ Xray Panel Installer        ║"
+    echo "  ║       ⚡ Xray Panel                  ║"
     echo "  ║   Панель управления пользователями   ║"
     echo "  ╚══════════════════════════════════════╝"
     echo -e "${NC}"
@@ -21,27 +21,116 @@ warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err()  { echo -e "${RED}[✗]${NC} $1"; }
 
 # ============================================================
-# Cleanup old installation
+# Update mode — just copy files and restart
 # ============================================================
-cleanup() {
-    if systemctl is-enabled xray-panel 2>/dev/null || systemctl is-active xray-panel 2>/dev/null; then
-        echo ""
-        warn "Обнаружена предыдущая установка Xray Panel"
-        read -rp "Удалить и переустановить? [Y/n]: " CLEANUP
-        if [ "${CLEANUP,,}" != "n" ]; then
-            echo ""
-            echo -e "${BLUE}── Удаление старой установки ──${NC}"
-            systemctl stop xray-panel 2>/dev/null || true
-            systemctl disable xray-panel 2>/dev/null || true
-            rm -f /etc/systemd/system/xray-panel.service
-            systemctl daemon-reload 2>/dev/null || true
-            rm -rf /opt/xray-panel
-            rm -f /usr/local/bin/xray-panel
-            rm -f /etc/nginx/sites-enabled/xray-panel
-            systemctl reload nginx 2>/dev/null || true
-            log "Старая установка удалена"
+do_update() {
+    echo ""
+    echo -e "${BLUE}── Обновление Xray Panel ──${NC}"
+
+    INSTALL_DIR="/opt/xray-panel"
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+    if [ ! -d "$INSTALL_DIR" ]; then
+        err "Панель не установлена — запустите установку: bash install.sh"
+        exit 1
+    fi
+
+    # Find and copy app.py
+    UPDATED=0
+    if [ -f "${SCRIPT_DIR}/app.py" ]; then
+        cp "${SCRIPT_DIR}/app.py" "${INSTALL_DIR}/app.py"
+        UPDATED=1
+    elif [ -f "${SCRIPT_DIR}/xray-panel/app.py" ]; then
+        cp "${SCRIPT_DIR}/xray-panel/app.py" "${INSTALL_DIR}/app.py"
+        UPDATED=1
+    fi
+
+    # Copy CLI tool
+    if [ -f "${SCRIPT_DIR}/xray-panel" ]; then
+        cp "${SCRIPT_DIR}/xray-panel" /usr/local/bin/xray-panel
+        chmod +x /usr/local/bin/xray-panel
+    elif [ -f "${SCRIPT_DIR}/xray-panel/xray-panel" ]; then
+        cp "${SCRIPT_DIR}/xray-panel/xray-panel" /usr/local/bin/xray-panel
+        chmod +x /usr/local/bin/xray-panel
+    fi
+
+    if [ "$UPDATED" -eq 0 ]; then
+        err "app.py не найден"
+        exit 1
+    fi
+
+    # Verify
+    if ! grep -q "app.run" "${INSTALL_DIR}/app.py"; then
+        err "app.py повреждён (нет app.run)"
+        exit 1
+    fi
+
+    # Update 3x-ui token in service file (may have changed)
+    XUI_BIN=""
+    for p in /usr/local/x-ui/x-ui /usr/bin/x-ui; do
+        [ -f "$p" ] && XUI_BIN="$p" && break
+    done
+    if [ -n "$XUI_BIN" ]; then
+        NEW_TOKEN=$($XUI_BIN setting -getApiToken 2>/dev/null | grep -oP 'apiToken:\s*\K\S+' || echo "")
+        OLD_TOKEN=$(grep -oP 'XUI_API_TOKEN=\K.*' /etc/systemd/system/xray-panel.service 2>/dev/null || echo "")
+        if [ -n "$NEW_TOKEN" ] && [ "$NEW_TOKEN" != "$OLD_TOKEN" ]; then
+            sed -i "s|XUI_API_TOKEN=.*|XUI_API_TOKEN=${NEW_TOKEN}\"|" /etc/systemd/system/xray-panel.service
+            log "API токен обновлён"
         fi
     fi
+
+    # Restart
+    systemctl daemon-reload
+    systemctl restart xray-panel
+    sleep 2
+
+    if systemctl is-active --quiet xray-panel; then
+        echo ""
+        log "Обновление завершено!"
+        xray-panel info 2>/dev/null || true
+    else
+        err "Ошибка запуска:"
+        journalctl -u xray-panel --no-pager -n 10
+        exit 1
+    fi
+}
+
+# ============================================================
+# Check if already installed
+# ============================================================
+check_installed() {
+    if systemctl is-enabled xray-panel 2>/dev/null || systemctl is-active xray-panel 2>/dev/null; then
+        echo ""
+        echo -e "${YELLOW}Xray Panel уже установлена.${NC}"
+        echo ""
+        echo "  1) Обновить (только файлы + перезапуск)"
+        echo "  2) Переустановить (полная настройка)"
+        echo "  3) Отмена"
+        echo ""
+        read -rp "Выбор [1]: " CHOICE
+        case "${CHOICE:-1}" in
+            1) do_update; exit 0 ;;
+            2) echo "" ;;
+            3|*) echo "Отмена"; exit 0 ;;
+        esac
+    fi
+}
+
+# ============================================================
+# Cleanup old installation (for full reinstall only)
+# ============================================================
+cleanup() {
+    echo ""
+    warn "Удаление предыдущей установки..."
+    systemctl stop xray-panel 2>/dev/null || true
+    systemctl disable xray-panel 2>/dev/null || true
+    rm -f /etc/systemd/system/xray-panel.service
+    systemctl daemon-reload 2>/dev/null || true
+    rm -rf /opt/xray-panel
+    rm -f /usr/local/bin/xray-panel
+    rm -f /etc/nginx/sites-enabled/xray-panel
+    systemctl reload nginx 2>/dev/null || true
+    log "Старая установка удалена"
 }
 
 # ============================================================
@@ -369,6 +458,7 @@ print_result() {
 # Main
 # ============================================================
 print_banner
+check_installed
 cleanup
 detect_xui
 detect_domain
