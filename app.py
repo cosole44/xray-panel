@@ -10,7 +10,7 @@ from functools import wraps
 from urllib.parse import quote
 
 import requests
-from flask import Flask, render_template_string, request, redirect, url_for, session, abort
+from flask import Flask, render_template_string, request, redirect, url_for, session, abort, jsonify
 
 # ============================================================
 # Auto-detect 3x-ui configuration
@@ -196,6 +196,41 @@ def build_sub_url(sub_id):
     return f"https://{PANEL_DOMAIN}:{sub_port}/sub/{sub_id}"
 
 
+def _get_stats():
+    """Rebuild stats from 3x-ui API."""
+    resp = xui_api("GET", "/panel/api/inbounds/list")
+    inbounds = resp.get("obj", []) if resp.get("success") else []
+    users, active, expired, total_bytes = [], 0, 0, 0
+    now_ms = int(time.time() * 1000)
+    for inb in inbounds:
+        settings = inb.get("settings", {})
+        if isinstance(settings, str):
+            try: settings = json.loads(settings)
+            except: settings = {}
+        for c in settings.get("clients", []):
+            email = c.get("email", "")
+            cid = c.get("id", "")
+            exp = c.get("expiryTime", 0)
+            en = c.get("enable", True)
+            sub_id = c.get("subId", email)
+            stats = next((s for s in inb.get("clientStats", []) if s.get("email") == email), None)
+            used = (stats.get("up", 0) if stats else 0) + (stats.get("down", 0) if stats else 0)
+            total_bytes += used
+            is_expired = exp > 0 and exp < now_ms
+            if is_expired: expired += 1
+            elif en: active += 1
+            exp_str = datetime.fromtimestamp(exp / 1000).strftime("%d.%m.%Y") if exp > 0 else "Never"
+            users.append({
+                "email": email, "uuid": cid, "inbound_id": inb["id"],
+                "traffic": fmt_bytes(used), "traffic_bytes": used,
+                "expiry_str": exp_str, "expiry": exp if exp > 0 else 9999999999999,
+                "expired": is_expired, "enable": en,
+                "vless_url": build_link(cid, email, inb),
+                "sub_url": build_sub_url(sub_id),
+            })
+    return {"total": len(users), "active": active, "expired": expired, "traffic": fmt_bytes(total_bytes), "users": users}
+
+
 # ============================================================
 # HTML Templates
 # ============================================================
@@ -287,9 +322,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .fa .btn{flex:1}
 .sub-url{background:rgba(15,23,42,0.8);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:'SF Mono',Monaco,monospace;font-size:11px;word-break:break-all;cursor:pointer;transition:border-color .2s;line-height:1.5}
 .sub-url:active{border-color:var(--accent);background:rgba(59,130,246,0.05)}
-.flash{padding:12px 16px;border-radius:12px;margin-bottom:16px;font-size:13px;font-weight:500}
-.flash.ok{background:rgba(34,197,94,0.1);color:var(--green);border:1px solid rgba(34,197,94,0.2)}
-.flash.er{background:rgba(239,68,68,0.1);color:var(--red);border:1px solid rgba(239,68,68,0.2)}
 .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
 .empty-icon{font-size:40px;margin-bottom:8px;opacity:0.5}
 .quick-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
@@ -309,6 +341,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .inbound-header.collapsed .arrow{transform:rotate(-90deg)}
 .inbound-users{background:var(--card);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden}
 .inbound-users.hidden{display:none}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:999;animation:toastIn .3s;box-shadow:0 8px 25px rgba(0,0,0,0.3)}
+.toast.ok{background:var(--green);color:#fff}
+.toast.er{background:var(--red);color:#fff}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.btn-load{opacity:0.6;pointer-events:none}
 </style></head><body>
 <div class="header">
 <h1><span>&#9889;</span> Xray</h1>
@@ -316,12 +353,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <a href="{{ basepath }}/logout" class="btn btn-g" style="font-size:12px;padding:8px 12px">Exit</a>
 </div></div>
 <div class="container">
-{% if flash_msg %}<div class="flash {{ flash_type }}">{{ flash_msg }}</div>{% endif %}
 <div class="stats">
-<div class="stat"><div class="label">Users</div><div class="value b">{{ users|length }}</div></div>
-<div class="stat"><div class="label">Active</div><div class="value g">{{ active }}</div></div>
-<div class="stat"><div class="label">Expired</div><div class="value r">{{ expired }}</div></div>
-<div class="stat"><div class="label">Traffic</div><div class="value p">{{ total_tr }}</div></div>
+<div class="stat"><div class="label">Users</div><div class="value b" id="stat-total">{{ users|length }}</div></div>
+<div class="stat"><div class="label">Active</div><div class="value g" id="stat-active">{{ active }}</div></div>
+<div class="stat"><div class="label">Expired</div><div class="value r" id="stat-expired">{{ expired }}</div></div>
+<div class="stat"><div class="label">Traffic</div><div class="value p" id="stat-traffic">{{ total_tr }}</div></div>
 </div>
 <div class="quick-actions">
 <div class="qa-btn" onclick="showModal('m-add')"><div class="icon">+</div><div class="txt">Add User</div></div>
@@ -339,46 +375,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 {% for inb in inbounds %}
 {% set inb_users = users | selectattr("inbound_id", "equalto", inb.id) | list %}
-{% if inb_users %}
-<div class="inbound-group">
+<div class="inbound-group" id="group-{{ inb.id }}">
 <div class="inbound-header" onclick="toggleInbound({{ inb.id }})">
 <h3>{{ inb.remark }} <span style="color:var(--muted);font-size:12px">{{ inb.protocol }}:{{ inb.port }}</span></h3>
-<span><span class="count">{{ inb_users|length }}</span> <span class="arrow">&#9660;</span></span>
+<span><span class="count" id="count-{{ inb.id }}">{{ inb_users|length }}</span> <span class="arrow">&#9660;</span></span>
 </div>
 <div class="inbound-users" id="inbound-{{ inb.id }}">
 {% for u in inb_users %}
-<div class="user-card" data-name="{{ u.email|lower }}" data-traffic="{{ u.traffic_bytes }}" data-expiry="{{ u.expiry }}" data-status="{% if not u.enable %}3{% elif u.expired %}2{% else %}1{% endif %}">
+<div class="user-card" id="user-{{ u.uuid }}" data-name="{{ u.email|lower }}" data-traffic="{{ u.traffic_bytes }}" data-expiry="{{ u.expiry }}" data-status="{% if not u.enable %}3{% elif u.expired %}2{% else %}1{% endif %}">
 <div class="user-top"><div class="user-name">{{ u.email }}
 {% if not u.enable %}<span class="badge r">Off</span>{% elif u.expired %}<span class="badge o">Expired</span>{% else %}<span class="badge g">Active</span>{% endif %}</div></div>
 <div class="user-meta"><span>&#128190; {{ u.traffic }}</span><span>&#128197; {{ u.expiry_str }}</span></div>
 <div class="user-actions">
 <button class="btn btn-p" style="flex:1" onclick="showLinks('{{ u.email }}','{{ u.vless_url|e }}','{{ u.sub_url|e }}')">&#128279; Links</button>
 <button class="btn btn-s" style="flex:1" onclick="showExtend('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">&#128197; Extend</button>
-<button class="btn btn-d" onclick="delUser('{{ u.email }}','{{ u.inbound_id }}')">&#128465;</button>
+<button class="btn btn-d" onclick="delUser('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">&#128465;</button>
 </div></div>
 {% endfor %}
+{% if not inb_users %}<div class="empty" style="padding:20px"><div class="empty-icon">&#128100;</div>No users</div>{% endif %}
 </div></div>
-{% endif %}
 {% endfor %}
-{% if not users %}<div class="empty"><div class="empty-icon">&#128100;</div>No users</div>{% endif %}
 
 <div class="modal-bg" id="m-add" onclick="if(event.target===this)hideModal('m-add')">
 <div class="modal"><span class="modal-handle"></span><h3>&#10133; New User</h3>
-<form method="POST" action="{{ basepath }}/add">
-<div class="fg"><label>Name</label><input type="text" name="email" required placeholder="e.g. john"></div>
-<div class="fg"><label>Expiry (days)</label><input type="number" name="expiry_days" value="30" min="1"></div>
-<div class="fg"><label>Traffic Limit (GB, 0=unlimited)</label><input type="number" name="total_gb" value="0" min="0"></div>
-<div class="fg"><label>Inbound</label><select name="inbound_id">{% for i in inbounds %}<option value="{{ i.id }}">{{ i.remark }}</option>{% endfor %}</select></div>
-<div class="fa"><button type="button" class="btn btn-g" onclick="hideModal('m-add')">Cancel</button><button type="submit" class="btn btn-s btn-xl">Create</button></div>
-</form></div></div>
+<div class="fg"><label>Name</label><input type="text" id="add-email" required placeholder="e.g. john"></div>
+<div class="fg"><label>Expiry (days)</label><input type="number" id="add-days" value="30" min="1"></div>
+<div class="fg"><label>Traffic Limit (GB, 0=unlimited)</label><input type="number" id="add-gb" value="0" min="0"></div>
+<div class="fg"><label>Inbound</label><select id="add-inbound">{% for i in inbounds %}<option value="{{ i.id }}">{{ i.remark }}</option>{% endfor %}</select></div>
+<div class="fa"><button type="button" class="btn btn-g" onclick="hideModal('m-add')">Cancel</button><button type="button" class="btn btn-s btn-xl" id="btn-add" onclick="doAdd()">Create</button></div>
+</div></div>
 
 <div class="modal-bg" id="m-ext" onclick="if(event.target===this)hideModal('m-ext')">
 <div class="modal"><span class="modal-handle"></span><h3>&#128197; Extend</h3>
-<form method="POST" action="{{ basepath }}/extend">
-<input type="hidden" name="email" id="ext-email"><input type="hidden" name="inbound_id" id="ext-inbound"><input type="hidden" name="client_uuid" id="ext-uuid">
-<div class="fg"><label>Days to add</label><input type="number" name="days" value="30" min="1"></div>
-<div class="fa"><button type="button" class="btn btn-g" onclick="hideModal('m-ext')">Cancel</button><button type="submit" class="btn btn-s btn-xl">Extend</button></div>
-</form></div></div>
+<input type="hidden" id="ext-email"><input type="hidden" id="ext-inbound"><input type="hidden" id="ext-uuid">
+<div class="fg"><label>Days to add</label><input type="number" id="ext-days" value="30" min="1"></div>
+<div class="fa"><button type="button" class="btn btn-g" onclick="hideModal('m-ext')">Cancel</button><button type="button" class="btn btn-s btn-xl" id="btn-ext" onclick="doExtend()">Extend</button></div>
+</div></div>
 
 <div class="modal-bg" id="m-links" onclick="if(event.target===this)hideModal('m-links')">
 <div class="modal"><span class="modal-handle"></span><h3>&#128279; Links</h3>
@@ -388,18 +420,51 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="fa"><button type="button" class="btn btn-g btn-full" onclick="hideModal('m-links')">Close</button></div>
 </div></div>
 
-<form method="POST" action="{{ basepath }}/delete" id="del-form" style="display:none"><input type="hidden" name="email" id="del-email"><input type="hidden" name="inbound_id" id="del-inbound"></form>
-
 <script>
+var BP="{{ basepath }}";
 function showModal(id){document.getElementById(id).classList.add('on')}
 function hideModal(id){document.getElementById(id).classList.remove('on')}
+function toast(msg,ok){var t=document.createElement('div');t.className='toast '+(ok?'ok':'er');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
 function showExtend(e,i,u){document.getElementById('ext-email').value=e;document.getElementById('ext-inbound').value=i;document.getElementById('ext-uuid').value=u;showModal('m-ext')}
 function showLinks(e,v,s){document.getElementById('links-user').textContent=e;document.getElementById('link-vless').textContent=v;document.getElementById('link-sub').textContent=s;showModal('m-links')}
-function delUser(e,i){if(confirm('Delete '+e+'?')){document.getElementById('del-email').value=e;document.getElementById('del-inbound').value=i;document.getElementById('del-form').submit()}}
-function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{var t=document.createElement('div');t.textContent='Copied!';t.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#22c55e;color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;animation:fadeIn .3s';document.body.appendChild(t);setTimeout(()=>t.remove(),1500)})}
+function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{toast('Copied!',true)})}
 function toggleInbound(id){var el=document.getElementById('inbound-'+id);var hdr=el.previousElementSibling;el.classList.toggle('hidden');hdr.classList.toggle('collapsed')}
 function filterUsers(){var q=document.getElementById('searchInput').value.toLowerCase();document.querySelectorAll('.user-card').forEach(c=>{c.style.display=c.dataset.name.includes(q)?'':'none'})}
 function sortUsers(){var s=document.getElementById('sortBy').value;document.querySelectorAll('.inbound-users').forEach(g=>{var cards=Array.from(g.querySelectorAll('.user-card'));cards.sort((a,b)=>{if(s==='name')return a.dataset.name.localeCompare(b.dataset.name);if(s==='name-desc')return b.dataset.name.localeCompare(a.dataset.name);if(s==='traffic')return parseInt(b.dataset.traffic)-parseInt(a.dataset.traffic);if(s==='expiry')return parseInt(a.dataset.expiry)-parseInt(b.dataset.expiry);if(s==='status')return parseInt(a.dataset.status)-parseInt(b.dataset.status);return 0});cards.forEach(c=>g.appendChild(c))})}
+async function api(path,body){var r=await fetch(BP+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return await r.json()}
+async function doAdd(){
+var btn=document.getElementById('btn-add');btn.classList.add('btn-load');btn.textContent='Creating...';
+var d=await api('/api/add',{email:document.getElementById('add-email').value,days:parseInt(document.getElementById('add-days').value),total_gb:parseInt(document.getElementById('add-gb').value),inbound_id:parseInt(document.getElementById('add-inbound').value)});
+btn.classList.remove('btn-load');btn.textContent='Create';
+if(d.ok){hideModal('m-add');toast('User '+d.user.email+' created',true);addUserCard(d.user,d.inbound);document.getElementById('add-email').value='';updateStats(d.stats)}
+else toast(d.msg||'Error',false)}
+async function doExtend(){
+var btn=document.getElementById('btn-ext');btn.classList.add('btn-load');btn.textContent='Extending...';
+var d=await api('/api/extend',{email:document.getElementById('ext-email').value,inbound_id:parseInt(document.getElementById('ext-inbound').value),client_uuid:document.getElementById('ext-uuid').value,days:parseInt(document.getElementById('ext-days').value)});
+btn.classList.remove('btn-load');btn.textContent='Extend';
+if(d.ok){hideModal('m-ext');toast(d.user.email+' extended to '+d.user.expiry_str,true);updateUserCard(d.user)}
+else toast(d.msg||'Error',false)}
+async function delUser(email,inbound_id,uuid){
+if(!confirm('Delete '+email+'?'))return;
+var d=await api('/api/delete',{email:email,inbound_id:inbound_id,client_uuid:uuid});
+if(d.ok){toast('User '+email+' deleted',true);var el=document.getElementById('user-'+uuid);if(el)el.remove();updateStats(d.stats)}
+else toast(d.msg||'Error',false)}
+function addUserCard(u,inb){var g=document.getElementById('inbound-'+u.inbound_id);if(!g){location.reload();return}
+var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
+h+='<div class="user-top"><div class="user-name">'+u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):'<span class="badge r">Off</span>')+'</div></div>';
+h+='<div class="user-meta"><span>&#128190; '+u.traffic+'</span><span>&#128197; '+u.expiry_str+'</span></div>';
+h+='<div class="user-actions">';
+h+='<button class="btn btn-p" style="flex:1" onclick="showLinks(\''+u.email+'\',\''+u.vless_url.replace(/'/g,"\\'")+'\',\''+u.sub_url+'\')">&#128279; Links</button>';
+h+='<button class="btn btn-s" style="flex:1" onclick="showExtend(\''+u.email+'\',\''+u.inbound_id+'\',\''+u.uuid+'\')">&#128197; Extend</button>';
+h+='<button class="btn btn-d" onclick="delUser(\''+u.email+'\',\''+u.inbound_id+'\',\''+u.uuid+'\')">&#128465;</button></div></div>';
+var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML('beforeend',h)}
+function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
+el.dataset.expiry=u.expiry;el.dataset.status=u.enable?(u.expired?'2':'1'):'3';
+el.querySelector('.user-name').innerHTML=u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):'<span class="badge r">Off</span>');
+el.querySelector('.user-meta').innerHTML='<span>&#128190; '+u.traffic+'</span><span>&#128197; '+u.expiry_str+'</span>'}
+function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-active').textContent=s.active;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-traffic').textContent=s.traffic;
+var inbCounts={};s.users.forEach(u=>{inbCounts[u.inbound_id]=(inbCounts[u.inbound_id]||0)+1});
+Object.keys(inbCounts).forEach(id=>{var el=document.getElementById('count-'+id);if(el)el.textContent=inbCounts[id]})}
 </script></body></html>'''
 
 
@@ -473,23 +538,24 @@ def dashboard():
         basepath=BASEPATH)
 
 
-@app.route("/add", methods=["POST"])
+@app.route("/api/add", methods=["POST"])
 @login_required
-def add_user():
-    email = request.form.get("email", "").strip()
-    inb_id = int(request.form.get("inbound_id", 1))
-    days = int(request.form.get("expiry_days", 30))
-    total_gb = int(request.form.get("total_gb", 0))
+def api_add():
+    d = request.get_json()
+    email = d.get("email", "").strip()
+    inb_id = int(d.get("inbound_id", 1))
+    days = int(d.get("days", 30))
+    total_gb = int(d.get("total_gb", 0))
     if not email:
-        return redir("", flash="Name required", ftype="er")
+        return jsonify({"ok": False, "msg": "Name required"})
     inb = get_full_inbound(inb_id)
     if not inb:
-        return redir("", flash="Inbound not found", ftype="er")
+        return jsonify({"ok": False, "msg": "Inbound not found"})
     settings = inb.get("settings", {})
-    if isinstance(settings, str):
-        settings = json.loads(settings)
+    if isinstance(settings, str): settings = json.loads(settings)
+    new_uuid = str(uuid.uuid4())
     settings["clients"].append({
-        "id": str(uuid.uuid4()), "email": email, "enable": True,
+        "id": new_uuid, "email": email, "enable": True,
         "expiryTime": int((time.time() + days * 86400) * 1000),
         "totalGB": total_gb, "limitIp": 0, "subId": email,
         "tgId": 0, "comment": "", "reset": 0, "security": "",
@@ -498,60 +564,74 @@ def add_user():
     })
     inb["settings"] = settings
     result = update_full_inbound(inb)
-    if result.get("success"):
-        return redir("", flash=f"User {email} created", ftype="ok")
-    return redir("", flash=f"Error: {result.get('msg', 'Unknown')}", ftype="er")
+    if not result.get("success"):
+        return jsonify({"ok": False, "msg": result.get("msg", "Unknown error")})
+    exp_ms = int((time.time() + days * 86400) * 1000)
+    return jsonify({
+        "ok": True,
+        "user": {
+            "uuid": new_uuid, "email": email, "inbound_id": inb_id,
+            "enable": True, "expired": False, "expiry": exp_ms,
+            "expiry_str": datetime.fromtimestamp(exp_ms / 1000).strftime("%d.%m.%Y"),
+            "traffic": "0 B", "traffic_bytes": 0,
+            "vless_url": build_link(new_uuid, email, inb),
+            "sub_url": build_sub_url(email),
+        },
+        "inbound": {"id": inb["id"], "remark": inb.get("remark", ""), "protocol": inb["protocol"], "port": inb["port"]},
+        "stats": _get_stats(),
+    })
 
 
-@app.route("/extend", methods=["POST"])
+@app.route("/api/extend", methods=["POST"])
 @login_required
-def extend_user():
-    email = request.form.get("email", "")
-    inb_id = int(request.form.get("inbound_id", 1))
-    cid = request.form.get("client_uuid", "")
-    days = int(request.form.get("days", 30))
+def api_extend():
+    d = request.get_json()
+    email = d.get("email", "")
+    inb_id = int(d.get("inbound_id", 1))
+    cid = d.get("client_uuid", "")
+    days = int(d.get("days", 30))
     inb = get_full_inbound(inb_id)
     if not inb:
-        return redir("", flash="Inbound not found", ftype="er")
+        return jsonify({"ok": False, "msg": "Inbound not found"})
     settings = inb.get("settings", {})
-    if isinstance(settings, str):
-        settings = json.loads(settings)
+    if isinstance(settings, str): settings = json.loads(settings)
     now_ms = int(time.time() * 1000)
-    found_client = None
+    found = None
     for c in settings.get("clients", []):
         if c.get("id") == cid or c.get("email") == email:
             cur_exp = c.get("expiryTime", 0)
             c["expiryTime"] = (cur_exp + days * 86400 * 1000) if cur_exp > now_ms else (now_ms + days * 86400 * 1000)
             c["updated_at"] = now_ms
-            found_client = c
+            found = c
             break
-    if not found_client:
-        return redir("", flash="Client not found", ftype="er")
+    if not found:
+        return jsonify({"ok": False, "msg": "Client not found"})
     inb["settings"] = settings
     result = update_full_inbound(inb)
-    if result.get("success"):
-        new_date = datetime.fromtimestamp(found_client["expiryTime"] / 1000).strftime("%d.%m.%Y")
-        return redir("", flash=f"{email} extended to {new_date}", ftype="ok")
-    return redir("", flash=f"Error: {result.get('msg', 'Unknown')}", ftype="er")
+    if not result.get("success"):
+        return jsonify({"ok": False, "msg": result.get("msg", "Unknown error")})
+    stats = _get_stats()
+    user_stats = next((u for u in stats["users"] if u["email"] == email), None)
+    return jsonify({"ok": True, "user": user_stats, "stats": stats})
 
 
-@app.route("/delete", methods=["POST"])
+@app.route("/api/delete", methods=["POST"])
 @login_required
-def delete_user():
-    email = request.form.get("email", "")
-    inb_id = int(request.form.get("inbound_id", 1))
+def api_delete():
+    d = request.get_json()
+    email = d.get("email", "")
+    inb_id = int(d.get("inbound_id", 1))
     inb = get_full_inbound(inb_id)
     if not inb:
-        return redir("", flash="Inbound not found", ftype="er")
+        return jsonify({"ok": False, "msg": "Inbound not found"})
     settings = inb.get("settings", {})
-    if isinstance(settings, str):
-        settings = json.loads(settings)
+    if isinstance(settings, str): settings = json.loads(settings)
     settings["clients"] = [c for c in settings.get("clients", []) if c.get("email") != email]
     inb["settings"] = settings
     result = update_full_inbound(inb)
-    if result.get("success"):
-        return redir("", flash=f"User {email} deleted", ftype="ok")
-    return redir("", flash=f"Error: {result.get('msg', 'Unknown')}", ftype="er")
+    if not result.get("success"):
+        return jsonify({"ok": False, "msg": result.get("msg", "Unknown error")})
+    return jsonify({"ok": True, "stats": _get_stats()})
 
 
 # ============================================================
