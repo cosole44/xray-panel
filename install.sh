@@ -65,8 +65,9 @@ detect_xui() {
     # Build base URL: https://127.0.0.1:PORT/BASEPATH
     XUI_URL="https://127.0.0.1:${XUI_PORT}"
     if [ -n "$XUI_BASEPATH" ] && [ "$XUI_BASEPATH" != "/" ]; then
-        # Remove trailing slash to avoid double slash in API calls
-        XUI_URL="${XUI_URL%/}/${XUI_BASEPATH%/}"
+        # Strip trailing and leading slashes to avoid double slash
+        CLEAN_PATH=$(echo "$XUI_BASEPATH" | sed 's:^/::;s:/$::')
+        XUI_URL="${XUI_URL}/${CLEAN_PATH}"
     fi
 
     log "API: ${XUI_URL}"
@@ -208,6 +209,16 @@ install_panel() {
 create_service() {
     echo ""
     echo -e "${BLUE}── Создание systemd сервиса ──${NC}"
+
+    # Re-read token fresh — it may have changed since initial detection
+    XUI_BIN_CURRENT=""
+    for p in /usr/local/x-ui/x-ui /usr/bin/x-ui; do
+        [ -f "$p" ] && XUI_BIN_CURRENT="$p" && break
+    done
+    if [ -n "$XUI_BIN_CURRENT" ]; then
+        XUI_TOKEN=$($XUI_BIN_CURRENT setting -getApiToken 2>/dev/null | grep -oP 'apiToken:\s*\K\S+' || echo "")
+        log "Токен обновлён: ${XUI_TOKEN:0:8}..."
+    fi
 
     cat > /etc/systemd/system/xray-panel.service << SVCEOF
 [Unit]

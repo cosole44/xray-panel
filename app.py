@@ -116,7 +116,11 @@ def login_required(f):
 
 def xui_api(method, path, data=None):
     try:
-        url = f"{XUI_BASE.rstrip('/')}{path}"
+        # Remove double slashes and strip trailing slash from base
+        base = XUI_BASE.rstrip('/')
+        while '//' in base.replace('https://', '').replace('http://', ''):
+            base = base.replace('//', '/')
+        url = f"{base}{path}"
         if method == "GET":
             r = requests.get(url, headers=XUI_HDR, verify=False, timeout=15)
         else:
