@@ -474,7 +474,7 @@ function copyWelcome(){var url=document.getElementById('welcome-sub').textConten
 function toggleInbound(id){var el=document.getElementById('inbound-'+id);var hdr=el.previousElementSibling;el.classList.toggle('hidden');hdr.classList.toggle('collapsed')}
 function filterUsers(){var q=document.getElementById('searchInput').value.toLowerCase();document.querySelectorAll('.user-card').forEach(c=>{c.style.display=c.dataset.name.includes(q)?'':'none'})}
 function sortUsers(){var s=document.getElementById('sortBy').value;document.querySelectorAll('.inbound-users').forEach(g=>{var cards=Array.from(g.querySelectorAll('.user-card'));cards.sort((a,b)=>{if(s==='name')return a.dataset.name.localeCompare(b.dataset.name);if(s==='name-desc')return b.dataset.name.localeCompare(a.dataset.name);if(s==='traffic')return parseInt(b.dataset.traffic)-parseInt(a.dataset.traffic);if(s==='expiry')return parseInt(a.dataset.expiry)-parseInt(b.dataset.expiry);if(s==='status')return parseInt(a.dataset.status)-parseInt(b.dataset.status);return 0});cards.forEach(c=>g.appendChild(c))})}
-async function api(path,body){var r=await fetch(BP+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return await r.json()}
+async function api(path,body){var r=await fetch(BP+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),credentials:'same-origin'});return await r.json()}
 async function doAdd(){
 var btn=document.getElementById('btn-add');btn.classList.add('btn-load');btn.textContent='Создание...';
 var d=await api('/api/add',{email:document.getElementById('add-email').value,days:parseInt(document.getElementById('add-days').value),inbound_id:parseInt(document.getElementById('add-inbound').value)});
