@@ -297,6 +297,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .qa-btn:hover{border-color:var(--accent);background:rgba(59,130,246,0.05)}
 .qa-btn .icon{font-size:28px;margin-bottom:6px}
 .qa-btn .txt{font-size:13px;font-weight:500;color:var(--muted)}
+.search-bar{display:flex;gap:8px;margin-bottom:16px}
+.search-bar input{flex:1;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none}
+.search-bar input:focus{border-color:var(--accent)}
+.search-bar select{padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none;min-width:140px}
+.inbound-group{margin-bottom:16px}
+.inbound-header{padding:10px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:2px}
+.inbound-header h3{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.inbound-header .count{color:var(--muted);font-size:12px}
+.inbound-header .arrow{color:var(--muted);transition:transform .2s}
+.inbound-header.collapsed .arrow{transform:rotate(-90deg)}
+.inbound-users{background:var(--card);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden}
+.inbound-users.hidden{display:none}
 </style></head><body>
 <div class="header">
 <h1><span>&#9889;</span> Xray</h1>
@@ -315,21 +327,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="qa-btn" onclick="showModal('m-add')"><div class="icon">+</div><div class="txt">Add User</div></div>
 <div class="qa-btn" onclick="location.reload()"><div class="icon">&#8635;</div><div class="txt">Refresh</div></div>
 </div>
-<div class="card">
-<div class="card-h"><h2>Users ({{ users|length }})</h2></div>
-{% for u in users %}
-<div class="user-card">
+<div class="search-bar">
+<input type="text" id="searchInput" placeholder="&#128269; Search users..." oninput="filterUsers()">
+<select id="sortBy" onchange="sortUsers()">
+<option value="name">Name A-Z</option>
+<option value="name-desc">Name Z-A</option>
+<option value="traffic">Traffic</option>
+<option value="expiry">Expiry</option>
+<option value="status">Status</option>
+</select>
+</div>
+{% for inb in inbounds %}
+{% set inb_users = users | selectattr("inbound_id", "equalto", inb.id) | list %}
+{% if inb_users %}
+<div class="inbound-group">
+<div class="inbound-header" onclick="toggleInbound({{ inb.id }})">
+<h3>{{ inb.remark }} <span style="color:var(--muted);font-size:12px">{{ inb.protocol }}:{{ inb.port }}</span></h3>
+<span><span class="count">{{ inb_users|length }}</span> <span class="arrow">&#9660;</span></span>
+</div>
+<div class="inbound-users" id="inbound-{{ inb.id }}">
+{% for u in inb_users %}
+<div class="user-card" data-name="{{ u.email|lower }}" data-traffic="{{ u.traffic_bytes }}" data-expiry="{{ u.expiry }}" data-status="{% if not u.enable %}3{% elif u.expired %}2{% else %}1{% endif %}">
 <div class="user-top"><div class="user-name">{{ u.email }}
 {% if not u.enable %}<span class="badge r">Off</span>{% elif u.expired %}<span class="badge o">Expired</span>{% else %}<span class="badge g">Active</span>{% endif %}</div></div>
-<div class="user-meta"><span>&#128190; {{ u.traffic }}</span><span>&#128197; {{ u.expiry_str }}</span><span>&#128225; {{ u.proto }}</span></div>
+<div class="user-meta"><span>&#128190; {{ u.traffic }}</span><span>&#128197; {{ u.expiry_str }}</span></div>
 <div class="user-actions">
 <button class="btn btn-p" style="flex:1" onclick="showLinks('{{ u.email }}','{{ u.vless_url|e }}','{{ u.sub_url|e }}')">&#128279; Links</button>
 <button class="btn btn-s" style="flex:1" onclick="showExtend('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">&#128197; Extend</button>
 <button class="btn btn-d" onclick="delUser('{{ u.email }}','{{ u.inbound_id }}')">&#128465;</button>
 </div></div>
 {% endfor %}
-{% if not users %}<div class="empty"><div class="empty-icon">&#128100;</div>No users</div>{% endif %}
 </div></div>
+{% endif %}
+{% endfor %}
+{% if not users %}<div class="empty"><div class="empty-icon">&#128100;</div>No users</div>{% endif %}
 
 <div class="modal-bg" id="m-add" onclick="if(event.target===this)hideModal('m-add')">
 <div class="modal"><span class="modal-handle"></span><h3>&#10133; New User</h3>
@@ -366,6 +397,9 @@ function showExtend(e,i,u){document.getElementById('ext-email').value=e;document
 function showLinks(e,v,s){document.getElementById('links-user').textContent=e;document.getElementById('link-vless').textContent=v;document.getElementById('link-sub').textContent=s;showModal('m-links')}
 function delUser(e,i){if(confirm('Delete '+e+'?')){document.getElementById('del-email').value=e;document.getElementById('del-inbound').value=i;document.getElementById('del-form').submit()}}
 function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{var t=document.createElement('div');t.textContent='Copied!';t.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#22c55e;color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;animation:fadeIn .3s';document.body.appendChild(t);setTimeout(()=>t.remove(),1500)})}
+function toggleInbound(id){var el=document.getElementById('inbound-'+id);var hdr=el.previousElementSibling;el.classList.toggle('hidden');hdr.classList.toggle('collapsed')}
+function filterUsers(){var q=document.getElementById('searchInput').value.toLowerCase();document.querySelectorAll('.user-card').forEach(c=>{c.style.display=c.dataset.name.includes(q)?'':'none'})}
+function sortUsers(){var s=document.getElementById('sortBy').value;document.querySelectorAll('.inbound-users').forEach(g=>{var cards=Array.from(g.querySelectorAll('.user-card'));cards.sort((a,b)=>{if(s==='name')return a.dataset.name.localeCompare(b.dataset.name);if(s==='name-desc')return b.dataset.name.localeCompare(a.dataset.name);if(s==='traffic')return parseInt(b.dataset.traffic)-parseInt(a.dataset.traffic);if(s==='expiry')return parseInt(a.dataset.expiry)-parseInt(b.dataset.expiry);if(s==='status')return parseInt(a.dataset.status)-parseInt(b.dataset.status);return 0});cards.forEach(c=>g.appendChild(c))})}
 </script></body></html>'''
 
 
@@ -424,7 +458,8 @@ def dashboard():
             users.append({
                 "email": email, "uuid": cid, "inbound_id": inb["id"],
                 "proto": f'{inb["protocol"]}:{inb["port"]}',
-                "traffic": fmt_bytes(used), "expiry_str": exp_str,
+                "traffic": fmt_bytes(used), "traffic_bytes": used,
+                "expiry_str": exp_str, "expiry": exp if exp > 0 else 9999999999999,
                 "expired": is_expired, "enable": en,
                 "vless_url": build_link(cid, email, inb),
                 "sub_url": build_sub_url(sub_id),
