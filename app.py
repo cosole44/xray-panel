@@ -214,7 +214,7 @@ def _get_stats():
     """Rebuild stats from 3x-ui API."""
     resp = xui_api("GET", "/panel/api/inbounds/list")
     inbounds = resp.get("obj", []) if resp.get("success") else []
-    users, active, expired, total_bytes = [], 0, 0, 0
+    users, active, expired, inactive, total_bytes = [], 0, 0, 0, 0
     now_ms = int(time.time() * 1000)
     for inb in inbounds:
         settings = inb.get("settings", {})
@@ -231,7 +231,8 @@ def _get_stats():
             used = (stats.get("up", 0) if stats else 0) + (stats.get("down", 0) if stats else 0)
             total_bytes += used
             is_expired = exp > 0 and exp < now_ms
-            if is_expired: expired += 1
+            if is_expired and not en: inactive += 1
+            elif is_expired: expired += 1
             elif en: active += 1
             exp_str = datetime.fromtimestamp(exp / 1000).strftime("%d.%m.%Y") if exp > 0 else "Never"
             users.append({
@@ -242,7 +243,7 @@ def _get_stats():
                 "vless_url": build_link(cid, email, inb),
                 "sub_url": build_sub_url(sub_id),
             })
-    return {"total": len(users), "active": active, "expired": expired, "traffic": fmt_bytes(total_bytes), "users": users}
+    return {"total": len(users), "active": active, "expired": expired, "inactive": inactive, "traffic": fmt_bytes(total_bytes), "users": users}
 
 
 # ============================================================
@@ -305,7 +306,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .user-meta span{display:flex;align-items:center;gap:4px}
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
 .badge.g{background:rgba(34,197,94,0.12);color:var(--green)}.badge.r{background:rgba(239,68,68,0.12);color:var(--red)}
-.badge.o{background:rgba(245,158,11,0.12);color:var(--orange)}
+.badge.o{background:rgba(245,158,11,0.12);color:var(--orange)}.badge.i{background:rgba(148,163,184,0.15);color:#94a3b8}
 .user-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;min-height:40px}
 .btn:active{transform:scale(0.97)}
@@ -371,6 +372,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="stat"><div class="label">Users</div><div class="value b" id="stat-total">{{ users|length }}</div></div>
 <div class="stat"><div class="label">Active</div><div class="value g" id="stat-active">{{ active }}</div></div>
 <div class="stat"><div class="label">Expired</div><div class="value r" id="stat-expired">{{ expired }}</div></div>
+<div class="stat"><div class="label">Inactive</div><div class="value p" id="stat-inactive">{{ inactive }}</div></div>
 <div class="stat"><div class="label">Traffic</div><div class="value p" id="stat-traffic">{{ total_tr }}</div></div>
 </div>
 <div class="quick-actions">
@@ -398,7 +400,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 {% for u in inb_users %}
 <div class="user-card" id="user-{{ u.uuid }}" data-name="{{ u.email|lower }}" data-traffic="{{ u.traffic_bytes }}" data-expiry="{{ u.expiry }}" data-status="{% if not u.enable %}3{% elif u.expired %}2{% else %}1{% endif %}">
 <div class="user-top"><div class="user-name">{{ u.email }}
-{% if not u.enable %}<span class="badge r">Off</span>{% elif u.expired %}<span class="badge o">Expired</span>{% else %}<span class="badge g">Active</span>{% endif %}</div></div>
+{% if not u.enable and u.expired %}<span class="badge i">Inactive</span>{% elif not u.enable %}<span class="badge r">Off</span>{% elif u.expired %}<span class="badge o">Expired</span>{% else %}<span class="badge g">Active</span>{% endif %}</div></div>
 <div class="user-meta"><span>&#128190; {{ u.traffic }}</span><span>&#128197; {{ u.expiry_str }}</span></div>
 <div class="user-actions">
 <button class="btn btn-p" style="flex:1" onclick="showLinks('{{ u.email }}','{{ u.vless_url|e }}','{{ u.sub_url|e }}')">&#128279; Links</button>
@@ -422,7 +424,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="modal-bg" id="m-ext" onclick="if(event.target===this)hideModal('m-ext')">
 <div class="modal"><span class="modal-handle"></span><h3>&#128197; Extend</h3>
 <input type="hidden" id="ext-email"><input type="hidden" id="ext-inbound"><input type="hidden" id="ext-uuid">
-<div class="fg"><label>Days to add</label><input type="number" id="ext-days" value="30" min="1"></div>
+<div class="fg"><label>Mode</label><select id="ext-mode" onchange="toggleExtMode()"><option value="days">Add days</option><option value="date">Set date</option></select></div>
+<div class="fg" id="ext-days-wrap"><label>Days to add</label><input type="number" id="ext-days" value="30" min="1"></div>
+<div class="fg" id="ext-date-wrap" style="display:none"><label>New expiry date</label><input type="date" id="ext-date"></div>
 <div class="fa"><button type="button" class="btn btn-g" onclick="hideModal('m-ext')">Cancel</button><button type="button" class="btn btn-s btn-xl" id="btn-ext" onclick="doExtend()">Extend</button></div>
 </div></div>
 
@@ -439,7 +443,8 @@ var BP="{{ basepath }}";
 function showModal(id){document.getElementById(id).classList.add('on')}
 function hideModal(id){document.getElementById(id).classList.remove('on')}
 function toast(msg,ok){var t=document.createElement('div');t.className='toast '+(ok?'ok':'er');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
-function showExtend(e,i,u){document.getElementById('ext-email').value=e;document.getElementById('ext-inbound').value=i;document.getElementById('ext-uuid').value=u;showModal('m-ext')}
+function showExtend(e,i,u){document.getElementById('ext-email').value=e;document.getElementById('ext-inbound').value=i;document.getElementById('ext-uuid').value=u;document.getElementById('ext-mode').value='days';toggleExtMode();showModal('m-ext')}
+function toggleExtMode(){var m=document.getElementById('ext-mode').value;document.getElementById('ext-days-wrap').style.display=m==='days'?'':'none';document.getElementById('ext-date-wrap').style.display=m==='date'?'':'none'}
 function showLinks(e,v,s){document.getElementById('links-user').textContent=e;document.getElementById('link-vless').textContent=v;document.getElementById('link-sub').textContent=s;showModal('m-links')}
 function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{toast('Copied!',true)})}
 function toggleInbound(id){var el=document.getElementById('inbound-'+id);var hdr=el.previousElementSibling;el.classList.toggle('hidden');hdr.classList.toggle('collapsed')}
@@ -454,7 +459,10 @@ if(d.ok){hideModal('m-add');toast('User '+d.user.email+' created',true);addUserC
 else toast(d.msg||'Error',false)}
 async function doExtend(){
 var btn=document.getElementById('btn-ext');btn.classList.add('btn-load');btn.textContent='Extending...';
-var d=await api('/api/extend',{email:document.getElementById('ext-email').value,inbound_id:parseInt(document.getElementById('ext-inbound').value),client_uuid:document.getElementById('ext-uuid').value,days:parseInt(document.getElementById('ext-days').value)});
+var mode=document.getElementById('ext-mode').value;
+var body={email:document.getElementById('ext-email').value,inbound_id:parseInt(document.getElementById('ext-inbound').value),client_uuid:document.getElementById('ext-uuid').value};
+if(mode==='date'){body.expiry_date=document.getElementById('ext-date').value}else{body.days=parseInt(document.getElementById('ext-days').value)}
+var d=await api('/api/extend',body);
 btn.classList.remove('btn-load');btn.textContent='Extend';
 if(d.ok){hideModal('m-ext');toast(d.user.email+' extended to '+d.user.expiry_str,true);updateUserCard(d.user)}
 else toast(d.msg||'Error',false)}
@@ -465,7 +473,7 @@ if(d.ok){toast('User '+email+' deleted',true);var el=document.getElementById('us
 else toast(d.msg||'Error',false)}
 function addUserCard(u,inb){var g=document.getElementById('inbound-'+u.inbound_id);if(!g){location.reload();return}
 var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
-h+='<div class="user-top"><div class="user-name">'+u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):'<span class="badge r">Off</span>')+'</div></div>';
+h+='<div class="user-top"><div class="user-name">'+u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):(u.expired?'<span class="badge i">Inactive</span>':'<span class="badge r">Off</span>'))+'</div></div>';
 h+='<div class="user-meta"><span>&#128190; '+u.traffic+'</span><span>&#128197; '+u.expiry_str+'</span></div>';
 h+='<div class="user-actions">';
 h+='<button class="btn btn-p" style="flex:1" onclick="showLinks(this.dataset.email,this.dataset.vless,this.dataset.sub)" data-email="'+u.email+'" data-vless="'+u.vless_url+'" data-sub="'+u.sub_url+'">&#128279; Links</button>';
@@ -474,9 +482,9 @@ h+='<button class="btn btn-d" onclick="delUser(this.dataset.email,this.dataset.i
 var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML('beforeend',h)}
 function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
 el.dataset.expiry=u.expiry;el.dataset.status=u.enable?(u.expired?'2':'1'):'3';
-el.querySelector('.user-name').innerHTML=u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):'<span class="badge r">Off</span>');
+el.querySelector('.user-name').innerHTML=u.email+(u.enable?(u.expired?'<span class="badge o">Expired</span>':'<span class="badge g">Active</span>'):(u.expired?'<span class="badge i">Inactive</span>':'<span class="badge r">Off</span>'));
 el.querySelector('.user-meta').innerHTML='<span>&#128190; '+u.traffic+'</span><span>&#128197; '+u.expiry_str+'</span>'}
-function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-active').textContent=s.active;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-traffic').textContent=s.traffic;
+function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-active').textContent=s.active;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-inactive').textContent=s.inactive;document.getElementById('stat-traffic').textContent=s.traffic;
 var inbCounts={};s.users.forEach(u=>{inbCounts[u.inbound_id]=(inbCounts[u.inbound_id]||0)+1});
 Object.keys(inbCounts).forEach(id=>{var el=document.getElementById('count-'+id);if(el)el.textContent=inbCounts[id]})}
 </script></body></html>'''
@@ -509,7 +517,7 @@ def dashboard():
     resp = xui_api("GET", "/panel/api/inbounds/list")
     inbounds = resp.get("obj", []) if resp.get("success") else []
 
-    users, active, expired, total_bytes = [], 0, 0, 0
+    users, active, expired, inactive, total_bytes = [], 0, 0, 0, 0
     now_ms = int(time.time() * 1000)
 
     for inb in inbounds:
@@ -529,7 +537,9 @@ def dashboard():
             used = (stats.get("up", 0) if stats else 0) + (stats.get("down", 0) if stats else 0)
             total_bytes += used
             is_expired = exp > 0 and exp < now_ms
-            if is_expired:
+            if is_expired and not en:
+                inactive += 1
+            elif is_expired:
                 expired += 1
             elif en:
                 active += 1
@@ -547,7 +557,7 @@ def dashboard():
     flash_msg = request.args.get("flash", "")
     flash_type = request.args.get("ftype", "ok")
     return render_template_string(DASHBOARD_PAGE,
-        users=users, inbounds=inbounds, active=active, expired=expired,
+        users=users, inbounds=inbounds, active=active, expired=expired, inactive=inactive,
         total_tr=fmt_bytes(total_bytes), flash_msg=flash_msg, flash_type=flash_type,
         basepath=BASEPATH)
 
@@ -604,6 +614,7 @@ def api_extend():
     inb_id = int(d.get("inbound_id", 1))
     cid = d.get("client_uuid", "")
     days = int(d.get("days", 30))
+    expiry_date = d.get("expiry_date", "")
     inb = get_full_inbound(inb_id)
     if not inb:
         return jsonify({"ok": False, "msg": "Inbound not found"})
@@ -613,8 +624,13 @@ def api_extend():
     found = None
     for c in settings.get("clients", []):
         if c.get("id") == cid or c.get("email") == email:
-            cur_exp = c.get("expiryTime", 0)
-            c["expiryTime"] = (cur_exp + days * 86400 * 1000) if cur_exp > now_ms else (now_ms + days * 86400 * 1000)
+            if expiry_date:
+                new_exp = int(datetime.strptime(expiry_date, "%Y-%m-%d").timestamp() * 1000)
+            else:
+                cur_exp = c.get("expiryTime", 0)
+                new_exp = (cur_exp + days * 86400 * 1000) if cur_exp > now_ms else (now_ms + days * 86400 * 1000)
+            c["expiryTime"] = new_exp
+            c["enable"] = True
             c["updated_at"] = now_ms
             found = c
             break
