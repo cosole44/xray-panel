@@ -255,9 +255,11 @@ LOGIN_PAGE = '''<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta
 <meta name="apple-mobile-web-app-title" content="Xray">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
 <title>Xray</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+html{background:#000;color-scheme:dark}
 body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:#000;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
 .box{background:#1c1c1e;border-radius:16px;padding:40px 28px;width:100%;max-width:380px}
 h1{text-align:center;font-size:28px;font-weight:700;margin-bottom:4px}
@@ -283,9 +285,11 @@ DASHBOARD_PAGE = '''<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><
 <meta name="apple-mobile-web-app-title" content="Xray">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
 <title>Xray</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+html{background:#000;color-scheme:dark}
 :root{--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--border:rgba(84,84,88,0.65);--text:#fff;--muted:#8e8e93;--blue:#0a84ff;--green:#30d158;--red:#ff453a;--orange:#ff9f0a;--yellow:#ffd60a;--radius:13px}
 body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:linear-gradient(160deg,#0a0a0a 0%,#0d1117 40%,#0a0a0a 100%);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 .header{background:rgba(28,28,30,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:0.5px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
