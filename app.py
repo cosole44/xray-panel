@@ -179,15 +179,22 @@ def build_link(client_uuid, client_email, inb):
         pubkey = reality.get("settings", {}).get("publicKey", "")
         snis = reality.get("serverNames", ["dl.google.com"])
         sni = snis[0] if snis else "dl.google.com"
+        short_ids = reality.get("shortIds", ["00"])
+        sid = short_ids[0] if short_ids else "00"
+        spider_x = reality.get("settings", {}).get("spiderX", "/")
         xhttp = stream.get("xhttpSettings", {})
         path = xhttp.get("path", "/")
-        params = f"type=xhttp&security=reality&pbk={pubkey}&fp=chrome&sni={sni}&s={quote(path)}&xPaddingBytes=100-1000"
-        return f"vless://{client_uuid}@{PANEL_DOMAIN}:{port}?{params}#{quote('Xray-' + client_email)}"
+        mode = xhttp.get("mode", "auto")
+        host = xhttp.get("host", "")
+        xpad = xhttp.get("xPaddingBytes", "100-1000")
+        extra = json.dumps({"mode": mode, "xPaddingBytes": xpad})
+        params = f"encryption=none&extra={quote(extra)}&fp=chrome&host={host}&mode={mode}&path={quote(path)}&pbk={pubkey}&security=reality&sid={sid}&sni={sni}&spx={quote(spider_x)}&type=xhttp&x_padding_bytes={xpad}"
+        return f"vless://{client_uuid}@{PANEL_DOMAIN}:{port}?{params}#{quote(client_email)}"
     elif proto == "hysteria":
         clients = inb.get("settings", {}).get("clients", [])
         auth = clients[0].get("auth", "") if clients else ""
         sni = stream.get("tlsSettings", {}).get("serverName", "")
-        return f"hysteria2://{auth}@{PANEL_DOMAIN}:{port}?insecure=1&sni={sni}#{quote('Xray-' + client_email)}"
+        return f"hysteria2://{auth}@{PANEL_DOMAIN}:{port}?insecure=1&sni={sni}#{quote(client_email)}"
     return ""
 
 
