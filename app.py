@@ -401,7 +401,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 <option value="expiry">Срок</option>
 <option value="online">Онлайн</option>
 </select>
-<button class="btn-refresh" onclick="location.reload()" title="Обновить">&#8635;</button>
+<button class="btn-refresh" onclick="refreshPage()" title="Обновить">&#8635;</button>
 </div>
 {% for inb in inbounds %}
 {% set inb_users = users | selectattr("inbound_id", "equalto", inb.id) | list %}
@@ -420,7 +420,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 <div class="user-meta"><span>{{ u.traffic }}</span><span class="{% if u.days_left <= 1 %}c-red{% elif u.days_left <= 5 %}c-yellow{% else %}c-green{% endif %}">{% if u.days_left >= 9999 %}∞{% else %}{{ u.days_left }} дн.{% endif %}</span></div>
 <div class="user-actions">
 <button class="btn" onclick="showLinks('{{ u.email }}','{{ u.vless_url|e }}','{{ u.sub_url|e }}')">Ссылки</button>
-<button class="btn" onclick="showExtend('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">Продлить</button>
+<button class="btn" onclick="showExtend('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}',{{ u.expiry }})">Продлить</button>
 <button class="btn btn-red" onclick="delUser('{{ u.email }}','{{ u.inbound_id }}','{{ u.uuid }}')">Удалить</button>
 </div></div>
 {% endfor %}
@@ -471,10 +471,10 @@ var BP="{{ basepath }}";
 function showModal(id){document.getElementById(id).classList.add('on')}
 function hideModal(id){document.getElementById(id).classList.remove('on')}
 function toast(msg,ok){var t=document.createElement('div');t.className='toast '+(ok?'ok':'er');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
-function showExtend(e,i,u){document.getElementById('ext-email').value=e;document.getElementById('ext-inbound').value=i;document.getElementById('ext-uuid').value=u;
-var now=new Date();var exp=new Date(now.getTime()+30*86400000);
+function showExtend(e,i,u,expMs){document.getElementById('ext-email').value=e;document.getElementById('ext-inbound').value=i;document.getElementById('ext-uuid').value=u;
+var base=new Date();var nowMs=Date.now();if(expMs>nowMs)base=new Date(expMs);var exp=new Date(base.getTime()+30*86400000);
 document.getElementById('ext-days').value=30;document.getElementById('ext-date').value=exp.toISOString().split('T')[0];showModal('m-ext')}
-function syncDateFromDays(){var d=parseInt(document.getElementById('ext-days').value)||0;var now=new Date();now.setDate(now.getDate()+d);document.getElementById('ext-date').value=now.toISOString().split('T')[0]}
+function syncDateFromDays(){var d=parseInt(document.getElementById('ext-days').value)||0;var base=new Date();var extMs=parseInt(document.getElementById('ext-uuid').dataset.expiry)||0;if(extMs>Date.now())base=new Date(extMs);base.setDate(base.getDate()+d);document.getElementById('ext-date').value=base.toISOString().split('T')[0]}
 function syncDaysFromDate(){var ds=document.getElementById('ext-date').value;if(!ds)return;var diff=Math.ceil((new Date(ds)-new Date())/(86400000));if(diff>0)document.getElementById('ext-days').value=diff}
 function showLinks(e,v,s){document.getElementById('links-user').textContent=e;document.getElementById('link-vless').textContent=v;document.getElementById('link-sub').textContent=s;showModal('m-links')}
 function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{toast('Скопировано',true)})}
@@ -511,7 +511,7 @@ h+='<label class="toggle" onclick="event.stopPropagation()"><input type="checkbo
 h+='<div class="user-meta"><span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+(u.days_left>=9999?'∞':u.days_left+' дн.')+'</span></div>';
 h+='<div class="user-actions">';
 h+='<button class="btn" onclick="showLinks(this.dataset.email,this.dataset.vless,this.dataset.sub)" data-email="'+u.email+'" data-vless="'+u.vless_url+'" data-sub="'+u.sub_url+'">Ссылки</button>';
-h+='<button class="btn" onclick="showExtend(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">Продлить</button>';
+h+='<button class="btn" onclick="showExtend(this.dataset.email,this.dataset.iid,this.dataset.uid,this.dataset.exp)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'" data-exp="'+u.expiry+'">Продлить</button>';
 h+='<button class="btn btn-red" onclick="delUser(this.dataset.email,this.dataset.iid,this.dataset.uid)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'">Удалить</button></div></div>';
 var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML('beforeend',h);addUserCardReveal(document.getElementById('user-'+u.uuid))}
 function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
@@ -520,6 +520,7 @@ el.querySelector('.user-name').innerHTML=u.email+' '+(u.enable?'<span class="bad
 el.querySelector('.user-meta').innerHTML='<span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+(u.days_left>=9999?'∞':u.days_left+' дн.')+'</span>';
 var cb=el.querySelector('.toggle input');if(cb)cb.checked=u.enable}
 function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-traffic').textContent=s.traffic;}
+async function refreshPage(){try{var r=await fetch(BP+'/');var html=await r.text();var doc=new DOMParser().parseFromString(html,'text/html');var ns=doc.querySelector('.stats');var os=document.querySelector('.stats');if(ns&&os)os.innerHTML=ns.innerHTML;doc.querySelectorAll('.inbound-users').forEach(function(ng){var og=document.getElementById(ng.id);if(og)og.innerHTML=ng.innerHTML});initReveal();pollOnline();toast('Обновлено',true)}catch(e){location.reload()}}
 function initReveal(){var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('active')}else{e.target.classList.remove('active')}})},{threshold:0.05});document.querySelectorAll('.user-card').forEach(function(c){c.classList.add('card-enter');obs.observe(c)});window._revealObs=obs}
 function addUserCardReveal(el){el.classList.add('card-enter');requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add('active')})});if(window._revealObs)window._revealObs.observe(el)}
 document.addEventListener('DOMContentLoaded',initReveal);
