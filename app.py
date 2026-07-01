@@ -214,7 +214,7 @@ def _get_stats():
     """Rebuild stats from 3x-ui API."""
     resp = xui_api("GET", "/panel/api/inbounds/list")
     inbounds = resp.get("obj", []) if resp.get("success") else []
-    users, active, expired, inactive, total_bytes = [], 0, 0, 0, 0
+    users, active, disabled, total_bytes = [], 0, 0, 0
     now_ms = int(time.time() * 1000)
     for inb in inbounds:
         settings = inb.get("settings", {})
@@ -230,9 +230,7 @@ def _get_stats():
             stats = next((s for s in inb.get("clientStats", []) if s.get("email") == email), None)
             used = (stats.get("up", 0) if stats else 0) + (stats.get("down", 0) if stats else 0)
             total_bytes += used
-            is_expired = exp > 0 and exp < now_ms
-            if is_expired and not en: inactive += 1
-            elif is_expired: expired += 1
+            if not en: disabled += 1
             elif en: active += 1
             exp_str = datetime.fromtimestamp(exp / 1000).strftime("%d.%m.%Y") if exp > 0 else "Never"
             days_left = max(0, int((exp - now_ms) / 86400000)) if exp > 0 else 9999
@@ -241,11 +239,11 @@ def _get_stats():
                 "traffic": fmt_bytes(used), "traffic_bytes": used,
                 "expiry_str": exp_str, "expiry": exp if exp > 0 else 9999999999999,
                 "days_left": days_left,
-                "expired": is_expired, "enable": en,
+                "expired": not en, "enable": en,
                 "vless_url": build_link(cid, email, inb),
                 "sub_url": build_sub_url(sub_id),
             })
-    return {"total": len(users), "active": active, "expired": expired, "inactive": inactive, "traffic": fmt_bytes(total_bytes), "users": users}
+    return {"total": len(users), "active": active, "expired": disabled, "traffic": fmt_bytes(total_bytes), "users": users}
 
 
 # ============================================================
@@ -311,6 +309,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .search-bar{display:flex;gap:10px;margin-bottom:16px}
 .search-bar input{flex:1;padding:10px 14px;background:var(--card2);border:none;border-radius:10px;color:var(--text);font-size:15px;outline:none}
 .search-bar select{padding:10px 14px;background:var(--card2);border:none;border-radius:10px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none;min-width:120px}
+.btn-refresh{width:40px;height:40px;background:var(--card2);border:none;border-radius:10px;color:var(--muted);font-size:18px;cursor:pointer;transition:all .15s;flex-shrink:0}
+.btn-refresh:active{transform:scale(0.9);background:#3a3a3c}
 .inbound-group{margin-bottom:20px}
 .inbound-header{padding:12px 16px;background:var(--card);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;cursor:pointer}
 .inbound-header h3{font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
@@ -392,8 +392,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 <option value="name-desc">Имя Я-А</option>
 <option value="traffic">Трафик</option>
 <option value="expiry">Срок</option>
-<option value="status">Статус</option>
+<option value="online">Онлайн</option>
 </select>
+<button class="btn-refresh" onclick="location.reload()" title="Обновить">&#8635;</button>
 </div>
 {% for inb in inbounds %}
 {% set inb_users = users | selectattr("inbound_id", "equalto", inb.id) | list %}
@@ -404,9 +405,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 </div>
 <div class="inbound-users" id="inbound-{{ inb.id }}">
 {% for u in inb_users %}
-<div class="user-card" id="user-{{ u.uuid }}" data-name="{{ u.email|lower }}" data-traffic="{{ u.traffic_bytes }}" data-expiry="{{ u.expiry }}" data-status="{% if not u.enable %}3{% elif u.expired %}2{% else %}1{% endif %}">
+<div class="user-card" id="user-{{ u.uuid }}" data-name="{{ u.email|lower }}" data-traffic="{{ u.traffic_bytes }}" data-expiry="{{ u.expiry }}" data-online="0">
 <div class="user-top">
-<div class="user-name">{{ u.email }} {% if not u.enable and u.expired %}<span class="badge i">Неактивен</span>{% elif not u.enable %}<span class="badge r">Выкл</span>{% elif u.expired %}<span class="badge o">Истёк</span>{% else %}<span class="badge g">Активен</span>{% endif %}</div>
+<div class="user-name">{{ u.email }} {% if not u.enable %}<span class="badge r">Выкл</span>{% else %}<span class="badge g">Активен</span>{% endif %}</div>
 <label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" {% if u.enable %}checked{% endif %} onchange="toggleUser('{{ u.email }}',{{ u.inbound_id }},'{{ u.uuid }}',this.checked)"><span class="slider"></span></label>
 </div>
 <div class="user-meta"><span>{{ u.traffic }}</span><span class="{% if u.days_left <= 1 %}c-red{% elif u.days_left <= 5 %}c-yellow{% else %}c-green{% endif %}">{% if u.days_left >= 9999 %}∞{% else %}{{ u.days_left }} дн.{% endif %}</span></div>
@@ -473,7 +474,7 @@ function copyEl(el){navigator.clipboard.writeText(el.textContent).then(()=>{toas
 function copyWelcome(){var url=document.getElementById('welcome-sub').textContent;var t='Инструкция как все установить: https://teletype.in/@sorokin_xd/yZeNii7Icsz\\n\\nТвоя ссылка для приложения:\\n`'+url+'`\\n\\nОплата: 79502435734(Тинькофф)\\nОлег С.\\n100₽/мес';navigator.clipboard.writeText(t).then(()=>{toast('Скопировано',true)})}
 function toggleInbound(id){var el=document.getElementById('inbound-'+id);var hdr=el.previousElementSibling;el.classList.toggle('hidden');hdr.classList.toggle('collapsed')}
 function filterUsers(){var q=document.getElementById('searchInput').value.toLowerCase();document.querySelectorAll('.user-card').forEach(c=>{c.style.display=c.dataset.name.includes(q)?'':'none'})}
-function sortUsers(){var s=document.getElementById('sortBy').value;document.querySelectorAll('.inbound-users').forEach(g=>{var cards=Array.from(g.querySelectorAll('.user-card'));cards.sort((a,b)=>{if(s==='name')return a.dataset.name.localeCompare(b.dataset.name);if(s==='name-desc')return b.dataset.name.localeCompare(a.dataset.name);if(s==='traffic')return parseInt(b.dataset.traffic)-parseInt(a.dataset.traffic);if(s==='expiry')return parseInt(a.dataset.expiry)-parseInt(b.dataset.expiry);if(s==='status')return parseInt(a.dataset.status)-parseInt(b.dataset.status);return 0});cards.forEach(c=>g.appendChild(c))})}
+function sortUsers(){var s=document.getElementById('sortBy').value;document.querySelectorAll('.inbound-users').forEach(g=>{var cards=Array.from(g.querySelectorAll('.user-card'));cards.sort((a,b)=>{if(s==='name')return a.dataset.name.localeCompare(b.dataset.name);if(s==='name-desc')return b.dataset.name.localeCompare(a.dataset.name);if(s==='traffic')return parseInt(b.dataset.traffic)-parseInt(a.dataset.traffic);if(s==='expiry')return parseInt(b.dataset.expiry)-parseInt(a.dataset.expiry);if(s==='online')return parseInt(b.dataset.online)-parseInt(a.dataset.online);return 0});cards.forEach(c=>g.appendChild(c))})}
 async function api(path,body){var r=await fetch(BP+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),credentials:'same-origin'});return await r.json()}
 async function doAdd(){
 var btn=document.getElementById('btn-add');btn.classList.add('btn-load');btn.textContent='Создание...';
@@ -497,8 +498,8 @@ var d=await api('/api/delete',{email:email,inbound_id:inbound_id,client_uuid:uui
 if(d.ok){toast(email+' удалён',true);var el=document.getElementById('user-'+uuid);if(el)el.remove();updateStats(d.stats)}
 else toast(d.msg||'Ошибка',false)}
 function addUserCard(u,inb){var g=document.getElementById('inbound-'+u.inbound_id);if(!g){location.reload();return}
-var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-status="'+(u.enable?(u.expired?'2':'1'):'3')+'">';
-h+='<div class="user-top"><div class="user-name">'+u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'))+'</div>';
+var h='<div class="user-card" id="user-'+u.uuid+'" data-name="'+u.email.toLowerCase()+'" data-traffic="'+u.traffic_bytes+'" data-expiry="'+u.expiry+'" data-online="0">';
+h+='<div class="user-top"><div class="user-name">'+u.email+' '+(u.enable?'<span class="badge g">Активен</span>':'<span class="badge r">Выкл</span>')+'</div>';
 h+='<label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" '+(u.enable?'checked':'')+' onchange="toggleUser(this.dataset.email,this.dataset.iid,this.dataset.uid,this.checked)" data-email="'+u.email+'" data-iid="'+u.inbound_id+'" data-uid="'+u.uuid+'"><span class="slider"></span></label></div>';
 h+='<div class="user-meta"><span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+(u.days_left>=9999?'∞':u.days_left+' дн.')+'</span></div>';
 h+='<div class="user-actions">';
@@ -508,14 +509,14 @@ h+='<button class="btn btn-red" onclick="delUser(this.dataset.email,this.dataset
 var empty=g.querySelector('.empty');if(empty)empty.remove();g.insertAdjacentHTML('beforeend',h);addUserCardReveal(document.getElementById('user-'+u.uuid))}
 function updateUserCard(u){var el=document.getElementById('user-'+u.uuid);if(!el)return;
 el.dataset.expiry=u.expiry;el.dataset.status=u.enable?(u.expired?'2':'1'):'3';
-el.querySelector('.user-name').innerHTML=u.email+' '+(u.enable?(u.expired?'<span class="badge o">Истёк</span>':'<span class="badge g">Активен</span>'):(u.expired?'<span class="badge i">Неактивен</span>':'<span class="badge r">Выкл</span>'));
+el.querySelector('.user-name').innerHTML=u.email+' '+(u.enable?'<span class="badge g">Активен</span>':'<span class="badge r">Выкл</span>');
 el.querySelector('.user-meta').innerHTML='<span>'+u.traffic+'</span><span class="'+(u.days_left<=1?'c-red':u.days_left<=5?'c-yellow':'c-green')+'">'+(u.days_left>=9999?'∞':u.days_left+' дн.')+'</span>';
 var cb=el.querySelector('.toggle input');if(cb)cb.checked=u.enable}
 function updateStats(s){document.getElementById('stat-total').textContent=s.total;document.getElementById('stat-expired').textContent=s.expired;document.getElementById('stat-traffic').textContent=s.traffic;}
 function initReveal(){var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('active')}else{e.target.classList.remove('active')}})},{threshold:0.05});document.querySelectorAll('.user-card').forEach(function(c){c.classList.add('card-enter');obs.observe(c)});window._revealObs=obs}
 function addUserCardReveal(el){el.classList.add('card-enter');requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add('active')})});if(window._revealObs)window._revealObs.observe(el)}
 document.addEventListener('DOMContentLoaded',initReveal);
-async function pollOnline(){try{var r=await fetch(BP+'/api/online');var d=await r.json();if(d.ok){document.getElementById('stat-online').textContent=d.online.length;d.online.forEach(function(e){var cards=document.querySelectorAll('.user-card');cards.forEach(function(c){if(c.dataset.name===e.toLowerCase())c.classList.add('is-online')})});document.querySelectorAll('.user-card.is-online').forEach(function(c){if(!d.online.some(function(e){return e.toLowerCase()===c.dataset.name}))c.classList.remove('is-online')})}}catch(e){}}
+async function pollOnline(){try{var r=await fetch(BP+'/api/online');var d=await r.json();if(d.ok){document.getElementById('stat-online').textContent=d.online.length;document.querySelectorAll('.user-card').forEach(function(c){var isOn=d.online.some(function(e){return e.toLowerCase()===c.dataset.name});c.dataset.online=isOn?'1':'0';if(isOn)c.classList.add('is-online');else c.classList.remove('is-online')})}}catch(e){}}
 setInterval(pollOnline,15000);pollOnline();
 </script></body></html>'''
 
@@ -547,7 +548,7 @@ def dashboard():
     resp = xui_api("GET", "/panel/api/inbounds/list")
     inbounds = resp.get("obj", []) if resp.get("success") else []
 
-    users, active, expired, inactive, total_bytes = [], 0, 0, 0, 0
+    users, active, disabled, total_bytes = [], 0, 0, 0
     now_ms = int(time.time() * 1000)
 
     for inb in inbounds:
@@ -566,11 +567,8 @@ def dashboard():
             stats = next((s for s in inb.get("clientStats", []) if s.get("email") == email), None)
             used = (stats.get("up", 0) if stats else 0) + (stats.get("down", 0) if stats else 0)
             total_bytes += used
-            is_expired = exp > 0 and exp < now_ms
-            if is_expired and not en:
-                inactive += 1
-            elif is_expired:
-                expired += 1
+            if not en:
+                disabled += 1
             elif en:
                 active += 1
             exp_str = datetime.fromtimestamp(exp / 1000).strftime("%d.%m.%Y") if exp > 0 else "Never"
@@ -581,7 +579,7 @@ def dashboard():
                 "traffic": fmt_bytes(used), "traffic_bytes": used,
                 "expiry_str": exp_str, "expiry": exp if exp > 0 else 9999999999999,
                 "days_left": days_left,
-                "expired": is_expired, "enable": en,
+                "expired": not en, "enable": en,
                 "vless_url": build_link(cid, email, inb),
                 "sub_url": build_sub_url(sub_id),
             })
@@ -589,7 +587,7 @@ def dashboard():
     flash_msg = request.args.get("flash", "")
     flash_type = request.args.get("ftype", "ok")
     return render_template_string(DASHBOARD_PAGE,
-        users=users, inbounds=inbounds, active=active, expired=expired, inactive=inactive,
+        users=users, inbounds=inbounds, active=active, expired=disabled,
         total_tr=fmt_bytes(total_bytes), flash_msg=flash_msg, flash_type=flash_type,
         basepath=BASEPATH)
 
